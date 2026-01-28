@@ -9,8 +9,8 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password);
+  login(@Body() dto: LoginDto, @Req() req: any) {
+    return this.auth.login(dto.email, dto.password, req);
   }
 
   @Post('refresh')

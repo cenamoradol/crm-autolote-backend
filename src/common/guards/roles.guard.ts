@@ -17,8 +17,11 @@ export class RolesGuard implements CanActivate {
     if (!required || required.length === 0) return true;
 
     const req = ctx.switchToHttp().getRequest();
-    const user = req.user as { sub: string } | undefined;
+    const user = req.user as { sub: string; isSuperAdmin?: boolean } | undefined;
     const storeId = req.storeId as string | undefined;
+
+    // SuperAdmin bypass
+    if (user?.isSuperAdmin) return true;
 
     if (!user?.sub || !storeId) return false;
 

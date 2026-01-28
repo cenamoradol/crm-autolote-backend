@@ -5,9 +5,21 @@ import { nanoid } from 'nanoid';
 const prisma = new PrismaClient();
 
 async function seedRoles() {
-  await prisma.role.upsert({ where: { key: 'admin' }, update: {}, create: { key: 'admin', name: 'Admin' } });
-  await prisma.role.upsert({ where: { key: 'supervisor' }, update: {}, create: { key: 'supervisor', name: 'Supervisor' } });
-  await prisma.role.upsert({ where: { key: 'seller' }, update: {}, create: { key: 'seller', name: 'Seller' } });
+  await prisma.role.upsert({
+    where: { key: 'admin' },
+    update: {},
+    create: { key: 'admin', name: 'Admin' },
+  });
+  await prisma.role.upsert({
+    where: { key: 'supervisor' },
+    update: {},
+    create: { key: 'supervisor', name: 'Supervisor' },
+  });
+  await prisma.role.upsert({
+    where: { key: 'seller' },
+    update: {},
+    create: { key: 'seller', name: 'Seller' },
+  });
 }
 
 async function seedPlan() {
@@ -26,19 +38,30 @@ async function seedPlan() {
 }
 
 async function seedBrandsModels() {
-  const toyota = await prisma.brand.upsert({ where: { name: 'Toyota' }, update: {}, create: { name: 'Toyota' } });
-  const honda = await prisma.brand.upsert({ where: { name: 'Honda' }, update: {}, create: { name: 'Honda' } });
+  const toyota = await prisma.brand.upsert({
+    where: { name: 'Toyota' },
+    update: {},
+    create: { name: 'Toyota' },
+  });
+
+  const honda = await prisma.brand.upsert({
+    where: { name: 'Honda' },
+    update: {},
+    create: { name: 'Honda' },
+  });
 
   const corolla = await prisma.model.upsert({
     where: { brandId_name: { brandId: toyota.id, name: 'Corolla' } },
     update: {},
     create: { brandId: toyota.id, name: 'Corolla' },
   });
+
   const rav4 = await prisma.model.upsert({
     where: { brandId_name: { brandId: toyota.id, name: 'RAV4' } },
     update: {},
     create: { brandId: toyota.id, name: 'RAV4' },
   });
+
   const civic = await prisma.model.upsert({
     where: { brandId_name: { brandId: honda.id, name: 'Civic' } },
     update: {},
@@ -51,52 +74,96 @@ async function seedBrandsModels() {
 async function seedUsers() {
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
+  const superAdmin = await prisma.user.upsert({
+    where: { email: 'superadmin@crmautolo.com' },
+    update: { passwordHash, isSuperAdmin: true, isActive: true },
+    create: {
+      email: 'superadmin@crmautolo.com',
+      fullName: 'Super Admin',
+      passwordHash,
+      isSuperAdmin: true,
+      isActive: true,
+    },
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@demo.com' },
-    update: { passwordHash },
-    create: { email: 'admin@demo.com', fullName: 'Admin Demo', passwordHash },
+    update: { passwordHash, isActive: true },
+    create: { email: 'admin@demo.com', fullName: 'Admin Demo', passwordHash, isActive: true },
   });
 
   const supervisor = await prisma.user.upsert({
     where: { email: 'supervisor@demo.com' },
-    update: { passwordHash },
-    create: { email: 'supervisor@demo.com', fullName: 'Supervisor Demo', passwordHash },
+    update: { passwordHash, isActive: true },
+    create: { email: 'supervisor@demo.com', fullName: 'Supervisor Demo', passwordHash, isActive: true },
   });
 
   const seller = await prisma.user.upsert({
     where: { email: 'seller@demo.com' },
-    update: { passwordHash },
-    create: { email: 'seller@demo.com', fullName: 'Seller Demo', passwordHash },
+    update: { passwordHash, isActive: true },
+    create: { email: 'seller@demo.com', fullName: 'Seller Demo', passwordHash, isActive: true },
   });
 
-  return { admin, supervisor, seller };
+  return { superAdmin, admin, supervisor, seller };
+}
+
+function normalizeDomain(domain: string): string {
+  return domain.trim().toLowerCase().replace(/:\d+$/, '');
 }
 
 async function main() {
   console.log('🌱 Seeding...');
+
   await seedRoles();
   const plan = await seedPlan();
-  const roles = await prisma.role.findMany();
-  const roleByKey = new Map(roles.map(r => [r.key, r]));
 
-  const { admin, supervisor, seller } = await seedUsers();
+  const roles = await prisma.role.findMany();
+  const roleByKey = new Map(roles.map((r) => [r.key, r]));
+
+  const { superAdmin, admin, supervisor, seller } = await seedUsers();
   const { toyota, honda, corolla, rav4, civic } = await seedBrandsModels();
 
+  // Store demo (upsert)
   const store = await prisma.store.upsert({
     where: { slug: 'demo-auto-lote' },
-    update: { name: 'Demo Auto Lote', logoUrl: 'https://dummyimage.com/240x80/000/fff&text=Demo+Auto+Lote' },
-    create: { name: 'Demo Auto Lote', slug: 'demo-auto-lote', logoUrl: 'https://dummyimage.com/240x80/000/fff&text=Demo+Auto+Lote' },
+    update: {
+      name: 'Demo Auto Lote',
+      logoUrl: 'https://dummyimage.com/240x80/000/fff&text=Demo+Auto+Lote',
+      isActive: true,
+    },
+    create: {
+      name: 'Demo Auto Lote',
+      slug: 'demo-auto-lote',
+      logoUrl: 'https://dummyimage.com/240x80/000/fff&text=Demo+Auto+Lote',
+      isActive: true,
+    },
   });
 
+  // Dominio tenant demo (upsert por domain)
+  const demoDomain = normalizeDomain('portal.demo-autolote.local');
+  await prisma.storeDomain.upsert({
+    where: { domain: demoDomain },
+    update: { storeId: store.id, isPrimary: true },
+    create: { storeId: store.id, domain: demoDomain, isPrimary: true },
+  });
+
+  // Branch primario (crear si no existe)
   const branch =
     (await prisma.branch.findFirst({ where: { storeId: store.id, isPrimary: true } })) ??
     (await prisma.branch.create({
-      data: { storeId: store.id, name: 'Principal', address: 'Tegucigalpa, Honduras', isPrimary: true },
+      data: {
+        storeId: store.id,
+        name: 'Principal',
+        address: 'Tegucigalpa, Honduras',
+        isPrimary: true,
+      },
     }));
 
   async function ensureMembership(userId: string, roleKey: 'admin' | 'supervisor' | 'seller') {
     const role = roleByKey.get(roleKey);
     if (!role) throw new Error(`Role ${roleKey} no existe.`);
+
+    // upsert requiere un unique: ya tenemos @@unique([userId, storeId, roleId])
     await prisma.userRole.upsert({
       where: { userId_storeId_roleId: { userId, storeId: store.id, roleId: role.id } },
       update: {},
@@ -104,33 +171,48 @@ async function main() {
     });
   }
 
+  await ensureMembership(superAdmin.id, 'admin');
   await ensureMembership(admin.id, 'admin');
   await ensureMembership(supervisor.id, 'supervisor');
   await ensureMembership(seller.id, 'seller');
 
-  await prisma.storeSubscription.create({
-    data: {
+  // Suscripción demo: NO duplicar si ya hay una ACTIVE vigente
+  const now = new Date();
+  const activeSub = await prisma.storeSubscription.findFirst({
+    where: {
       storeId: store.id,
-      planId: plan.id,
-      provider: 'BANK_TRANSFER',
       status: 'ACTIVE',
-      startsAt: new Date(),
-      endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      approvedByUserId: admin.id,
-      approvedAt: new Date(),
-      payments: {
-        create: {
-          provider: 'BANK_TRANSFER',
-          status: 'PAID',
-          amount: new Prisma.Decimal('0.00'),
-          currency: 'USD',
-          paidAt: new Date(),
-          metadata: { note: 'Demo seed payment' },
-        },
-      },
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
     },
+    select: { id: true },
   });
 
+  if (!activeSub) {
+    await prisma.storeSubscription.create({
+      data: {
+        storeId: store.id,
+        planId: plan.id,
+        provider: 'BANK_TRANSFER',
+        status: 'ACTIVE',
+        startsAt: now,
+        endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        approvedByUserId: superAdmin.id,
+        approvedAt: now,
+        payments: {
+          create: {
+            provider: 'BANK_TRANSFER',
+            status: 'PAID',
+            amount: new Prisma.Decimal('0.00'),
+            currency: 'USD',
+            paidAt: now,
+            metadata: { note: 'Demo seed payment' },
+          },
+        },
+      },
+    });
+  }
+
+  // Vehículos demo (se crearán nuevos cada seed, sin chocar unique)
   const v1 = await prisma.vehicle.create({
     data: {
       storeId: store.id,
@@ -150,8 +232,20 @@ async function main() {
       createdByUserId: admin.id,
       media: {
         create: [
-          { kind: 'IMAGE', fileKey: 'seed/corolla-front.jpg', url: 'https://dummyimage.com/900x600/111/fff&text=Corolla+Front', position: 0, isCover: true },
-          { kind: 'IMAGE', fileKey: 'seed/corolla-back.jpg', url: 'https://dummyimage.com/900x600/333/fff&text=Corolla+Back', position: 1, isCover: false },
+          {
+            kind: 'IMAGE',
+            fileKey: 'seed/corolla-front.jpg',
+            url: 'https://dummyimage.com/900x600/111/fff&text=Corolla+Front',
+            position: 0,
+            isCover: true,
+          },
+          {
+            kind: 'IMAGE',
+            fileKey: 'seed/corolla-back.jpg',
+            url: 'https://dummyimage.com/900x600/333/fff&text=Corolla+Back',
+            position: 1,
+            isCover: false,
+          },
         ],
       },
     },
@@ -171,7 +265,15 @@ async function main() {
       isPublished: true,
       createdByUserId: supervisor.id,
       media: {
-        create: [{ kind: 'IMAGE', fileKey: 'seed/civic.jpg', url: 'https://dummyimage.com/900x600/222/fff&text=Civic', position: 0, isCover: true }],
+        create: [
+          {
+            kind: 'IMAGE',
+            fileKey: 'seed/civic.jpg',
+            url: 'https://dummyimage.com/900x600/222/fff&text=Civic',
+            position: 0,
+            isCover: true,
+          },
+        ],
       },
     },
   });
@@ -192,18 +294,38 @@ async function main() {
     },
   });
 
-  const customer = await prisma.customer.create({
-    data: { storeId: store.id, fullName: 'Carlos Rivera', phone: '+50499990000', email: 'carlos@example.com', documentId: '0801-1990-00000' },
+  // ✅ CUSTOMER idempotente por (storeId,email)
+  const customerEmail = 'carlos@example.com';
+  const customerPhone = '+50499990000';
+
+  const customer = await prisma.customer.upsert({
+    where: {
+      // Prisma genera este unique input automáticamente por @@unique([storeId, email])
+      storeId_email: { storeId: store.id, email: customerEmail },
+    },
+    update: {
+      fullName: 'Carlos Rivera',
+      phone: customerPhone,
+      documentId: '0801-1990-00000',
+    },
+    create: {
+      storeId: store.id,
+      fullName: 'Carlos Rivera',
+      phone: customerPhone,
+      email: customerEmail,
+      documentId: '0801-1990-00000',
+    },
   });
 
+  // Lead de demo (puede duplicarse por cada seed; si quieres también lo hacemos idempotente luego)
   const lead = await prisma.lead.create({
     data: {
       storeId: store.id,
       status: 'IN_PROGRESS',
       source: 'Facebook',
       fullName: 'Carlos Rivera',
-      phone: '+50499990000',
-      email: 'carlos@example.com',
+      phone: customerPhone,
+      email: customerEmail,
       assignedToUserId: seller.id,
       customerId: customer.id,
       preference: {
@@ -221,6 +343,7 @@ async function main() {
     },
   });
 
+  // Venta demo (se crea nueva siempre porque vehicleId es nuevo)
   await prisma.vehicleSale.create({
     data: {
       storeId: store.id,
@@ -236,15 +359,26 @@ async function main() {
 
   await prisma.vehicle.update({
     where: { id: v2.id },
-    data: { status: 'SOLD', isPublished: false, soldAt: new Date(), soldPrice: new Prisma.Decimal('11500.00') },
+    data: {
+      status: 'SOLD',
+      isPublished: false,
+      soldAt: new Date(),
+      soldPrice: new Prisma.Decimal('11500.00'),
+    },
   });
 
   await prisma.vehicleStatusHistory.create({
-    data: { vehicleId: v2.id, fromStatus: 'AVAILABLE', toStatus: 'SOLD', changedByUserId: seller.id },
+    data: {
+      vehicleId: v2.id,
+      fromStatus: 'AVAILABLE',
+      toStatus: 'SOLD',
+      changedByUserId: seller.id,
+    },
   });
 
   console.log('✅ Seed listo');
   console.log('🔐 Credenciales demo:');
+  console.log('   superadmin@crmautolo.com / Password123!');
   console.log('   admin@demo.com / Password123!');
   console.log('   supervisor@demo.com / Password123!');
   console.log('   seller@demo.com / Password123!');

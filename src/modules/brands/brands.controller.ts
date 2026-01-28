@@ -1,10 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { BrandsService } from './brands.service';
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
-import { StoreContextGuard } from '../../common/guards/store-context.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { LicenseGuard } from '../../common/guards/license.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
 
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
@@ -12,11 +9,10 @@ import { CreateModelDto } from './dto/create-model.dto';
 import { UpdateModelDto } from './dto/update-model.dto';
 
 @Controller()
-@UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
 export class BrandsController {
   constructor(private readonly brands: BrandsService) {}
 
-  // --------- READ ---------
+  // --------- READ (público / sin store) ---------
   @Get('brands')
   listBrands(@Query('q') q?: string) {
     return this.brands.listBrands(q);
@@ -32,40 +28,39 @@ export class BrandsController {
     return this.brands.listModels(q, brandId);
   }
 
-  // --------- BRAND WRITE (admin) ---------
+  // --------- WRITE (solo SuperAdmin) ---------
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Post('brands')
-  @Roles('admin')
   createBrand(@Body() dto: CreateBrandDto) {
     return this.brands.createBrand(dto.name);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch('brands/:id')
-  @Roles('admin')
   updateBrand(@Param('id') id: string, @Body() dto: UpdateBrandDto) {
     return this.brands.updateBrand(id, dto.name);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete('brands/:id')
-  @Roles('admin')
   deleteBrand(@Param('id') id: string) {
     return this.brands.deleteBrand(id);
   }
 
-  // --------- MODEL WRITE (admin) ---------
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Post('brands/:brandId/models')
-  @Roles('admin')
   createModel(@Param('brandId') brandId: string, @Body() dto: CreateModelDto) {
     return this.brands.createModel(brandId, dto.name);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Patch('models/:id')
-  @Roles('admin')
   updateModel(@Param('id') id: string, @Body() dto: UpdateModelDto) {
     return this.brands.updateModel(id, { name: dto.name, brandId: dto.brandId });
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete('models/:id')
-  @Roles('admin')
   deleteModel(@Param('id') id: string) {
     return this.brands.deleteModel(id);
   }

@@ -1,0 +1,82 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { SuperAdminService } from './super-admin.service';
+
+import { CreateStoreDto } from './dto/create-store.dto';
+import { UpdateStoreDto } from './dto/update-store.dto';
+import { CreateDomainDto } from './dto/create-domain.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { AssignMemberDto } from './dto/assign-member.dto';
+
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
+@Controller('sa')
+export class SuperAdminController {
+  constructor(private readonly sa: SuperAdminService) {}
+
+  // -------- Stores --------
+  @Post('stores')
+  createStore(@Body() dto: CreateStoreDto) {
+    return this.sa.createStore(dto);
+  }
+
+  @Get('stores')
+  listStores(@Query('q') q?: string) {
+    return this.sa.listStores(q);
+  }
+
+  @Get('stores/:id')
+  getStore(@Param('id') id: string) {
+    return this.sa.getStore(id);
+  }
+
+  @Patch('stores/:id')
+  updateStore(@Param('id') id: string, @Body() dto: UpdateStoreDto) {
+    return this.sa.updateStore(id, dto);
+  }
+
+  // -------- Store Domains --------
+  @Post('stores/:id/domains')
+  addDomain(@Param('id') storeId: string, @Body() dto: CreateDomainDto) {
+    return this.sa.addStoreDomain(storeId, dto);
+  }
+
+  @Delete('stores/:id/domains/:domainId')
+  removeDomain(@Param('id') storeId: string, @Param('domainId') domainId: string) {
+    return this.sa.removeStoreDomain(storeId, domainId);
+  }
+
+  // -------- Members --------
+  @Get('stores/:id/members')
+  listMembers(@Param('id') storeId: string) {
+    return this.sa.listStoreMembers(storeId);
+  }
+
+  @Post('stores/:id/members/assign')
+  assignMember(@Param('id') storeId: string, @Body() dto: AssignMemberDto) {
+    return this.sa.assignMember(storeId, dto);
+  }
+
+  // -------- Users --------
+  @Post('users')
+  createUser(@Body() dto: CreateUserDto) {
+    return this.sa.createUser(dto);
+  }
+
+  @Get('users')
+  listUsers(@Query('q') q?: string) {
+    return this.sa.listUsers(q);
+  }
+
+  @Patch('users/:id')
+  updateUser(@Param('id') userId: string, @Body() dto: UpdateUserDto) {
+    return this.sa.updateUser(userId, dto);
+  }
+
+  // -------- Roles --------
+  @Get('roles')
+  listRoles() {
+    return this.sa.listRoles();
+  }
+}

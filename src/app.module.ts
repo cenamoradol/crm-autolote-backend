@@ -20,6 +20,13 @@ import { StoreSettingsModule } from './modules/store-settings/store-settings.mod
 
 import { HealthModule } from './modules/health/health.module';
 
+// Context (tenant por dominio)
+import { TenantContextModule } from './common/tenant/tenant-context.module';
+import { ContextModule } from './modules/context/context.module';
+
+// SuperAdmin
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+
 // Rate limit
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -35,6 +42,9 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
   imports: [
     PrismaModule,
 
+    // Tenant resolver disponible a nivel global (guards/auth)
+    TenantContextModule,
+
     // Rate limit
     ThrottlerModule.forRoot([
       {
@@ -44,6 +54,7 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     ]),
 
     AuthModule,
+    ContextModule,
     PublicModule,
 
     MeModule,
@@ -63,6 +74,8 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     StoreSettingsModule,
 
     HealthModule,
+
+    SuperAdminModule,
 
     ...(AUDIT_ENABLED ? [QueuesModule, AuditModule] : []),
   ],

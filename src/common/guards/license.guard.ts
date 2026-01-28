@@ -11,6 +11,10 @@ export class LicenseGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const method = (req.method || 'GET').toUpperCase();
     const storeId = req.storeId as string | undefined;
+    const user = req.user as { isSuperAdmin?: boolean } | undefined;
+
+    // SuperAdmin bypass
+    if (user?.isSuperAdmin) return true;
 
     // Si no hay storeId (auth/public), no aplica
     if (!storeId) return true;

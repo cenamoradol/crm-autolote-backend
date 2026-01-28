@@ -136,6 +136,8 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   fullName     String?  @map("full_name")
+  // SuperAdmin es global (no depende de store)
+  isSuperAdmin Boolean  @default(false) @map("is_super_admin")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
