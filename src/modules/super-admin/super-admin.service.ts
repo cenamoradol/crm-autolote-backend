@@ -9,7 +9,7 @@ function normalizeDomain(domain: string): string {
 
 @Injectable()
 export class SuperAdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async listRoles() {
     return this.prisma.role.findMany({ orderBy: { name: 'asc' } });
@@ -72,11 +72,11 @@ export class SuperAdminService {
     return this.prisma.store.findMany({
       where: query
         ? {
-            OR: [
-              { name: { contains: query, mode: 'insensitive' } },
-              { slug: { contains: query, mode: 'insensitive' } },
-            ],
-          }
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { slug: { contains: query, mode: 'insensitive' } },
+          ],
+        }
         : undefined,
       include: {
         domains: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
@@ -97,12 +97,44 @@ export class SuperAdminService {
           take: 5,
           include: { plan: true },
         },
+        memberships: {
+          include: {
+            user: { select: { id: true, email: true, fullName: true, isActive: true } },
+            role: { select: { id: true, key: true, name: true } },
+          },
+        },
       },
     });
 
     if (!store) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store no existe.' });
-    return store;
+
+    // Agrupamos miembros por usuario para que el frontend lo reciba plano
+    const membersMap = new Map<string, any>();
+    for (const membership of store.memberships) {
+      if (!membersMap.has(membership.userId)) {
+        membersMap.set(membership.userId, {
+          userId: membership.userId,
+          email: membership.user.email,
+          fullName: membership.user.fullName,
+          isActive: membership.user.isActive,
+          roles: [],
+        });
+      }
+      membersMap.get(membership.userId).roles.push({
+        id: membership.role.id,
+        key: membership.role.key,
+        name: membership.role.name,
+      });
+    }
+
+    const { memberships, ...rest } = store;
+
+    return {
+      ...rest,
+      members: Array.from(membersMap.values()),
+    };
   }
+
 
   async updateStore(storeId: string, dto: { name?: string; slug?: string; logoUrl?: string; isActive?: boolean }) {
     const existing = await this.prisma.store.findUnique({ where: { id: storeId } });
@@ -197,11 +229,11 @@ export class SuperAdminService {
     return this.prisma.user.findMany({
       where: query
         ? {
-            OR: [
-              { email: { contains: query, mode: 'insensitive' } },
-              { fullName: { contains: query, mode: 'insensitive' } },
-            ],
-          }
+          OR: [
+            { email: { contains: query, mode: 'insensitive' } },
+            { fullName: { contains: query, mode: 'insensitive' } },
+          ],
+        }
         : undefined,
       orderBy: { createdAt: 'desc' },
       select: { id: true, email: true, fullName: true, isSuperAdmin: true, isActive: true, createdAt: true },

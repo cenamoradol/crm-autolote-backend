@@ -235,6 +235,7 @@ model Vehicle {
 
   brandId     String @db.Uuid
   modelId     String @db.Uuid
+  vehicleTypeId String? @db.Uuid @map("vehicle_type_id")
 
   title       String?
   description String?
@@ -258,6 +259,7 @@ model Vehicle {
   branch  Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
   brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
   model   Model  @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  vehicleType VehicleType? @relation(fields: [vehicleTypeId], references: [id], onDelete: SetNull)
 
   createdBy User? @relation("VehicleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
@@ -391,6 +393,17 @@ model Lead {
   @@index([storeId, createdAt])
 }
 
+model VehicleType {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  vehicles Vehicle[]
+  leadPreferences LeadPreference[] @relation("LeadPreferenceVehicleType")
+
+  @@index([name])
+}
+
 model LeadPreference {
   id        String   @id @default(uuid()) @db.Uuid
   storeId   String   @db.Uuid
@@ -403,14 +416,16 @@ model LeadPreference {
 
   desiredBrandId String? @db.Uuid @map("desired_brand_id")
   desiredModelId String? @db.Uuid @map("desired_model_id")
+  vehicleTypeId  String? @db.Uuid @map("vehicle_type_id")
 
   notes     String?
 
   lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  desiredBrand Brand? @relation("LeadPreferenceDesiredBrand", fields: [desiredBrandId], references: [id], onDelete: SetNull)
-  desiredModel Model? @relation("LeadPreferenceDesiredModel", fields: [desiredModelId], references: [id], onDelete: SetNull)
+  desiredBrand Brand?       @relation("LeadPreferenceDesiredBrand", fields: [desiredBrandId], references: [id], onDelete: SetNull)
+  desiredModel Model?       @relation("LeadPreferenceDesiredModel", fields: [desiredModelId], references: [id], onDelete: SetNull)
+  vehicleType  VehicleType? @relation("LeadPreferenceVehicleType", fields: [vehicleTypeId], references: [id], onDelete: SetNull)
 
   @@index([storeId])
 }

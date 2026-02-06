@@ -33,5 +33,10 @@ export class UpsertLeadPreferenceDto {
 
   @IsOptional()
   @IsString()
+  vehicleTypeId?: string;
+
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

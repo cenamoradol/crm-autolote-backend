@@ -35,6 +35,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './queues/audit/audit.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { VehicleTypesModule } from './modules/vehicle-types/vehicle-types.module';
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
 
@@ -78,6 +79,8 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     SuperAdminModule,
 
     ...(AUDIT_ENABLED ? [QueuesModule, AuditModule] : []),
+
+    VehicleTypesModule,
   ],
   providers: [
     // Rate limit global

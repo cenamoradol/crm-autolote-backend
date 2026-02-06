@@ -9,7 +9,7 @@ import { LeadStatus, RoleKey } from '@prisma/client';
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private roleRank(key: RoleKey) {
     if (key === 'admin') return 3;
@@ -259,7 +259,7 @@ export class LeadsService {
 
     const pref = await this.prisma.leadPreference.findFirst({
       where: { storeId, leadId },
-      include: { desiredBrand: true, desiredModel: true },
+      include: { desiredBrand: true, desiredModel: true, vehicleType: true },
     });
 
     if (!pref) throw new NotFoundException('LEAD_PREFERENCE_NOT_FOUND');
@@ -280,6 +280,7 @@ export class LeadsService {
         yearTo: dto.yearTo ?? null,
         desiredBrandId: dto.desiredBrandId ?? null,
         desiredModelId: dto.desiredModelId ?? null,
+        vehicleTypeId: dto.vehicleTypeId ?? null,
         notes: dto.notes ?? null,
       } as any,
       update: {
@@ -289,6 +290,7 @@ export class LeadsService {
         yearTo: dto.yearTo ?? undefined,
         desiredBrandId: dto.desiredBrandId ?? undefined,
         desiredModelId: dto.desiredModelId ?? undefined,
+        vehicleTypeId: dto.vehicleTypeId ?? undefined,
         notes: dto.notes ?? undefined,
       } as any,
     });
@@ -312,6 +314,7 @@ export class LeadsService {
         yearTo: dto.yearTo ?? undefined,
         desiredBrandId: dto.desiredBrandId ?? undefined,
         desiredModelId: dto.desiredModelId ?? undefined,
+        vehicleTypeId: dto.vehicleTypeId ?? undefined,
         notes: dto.notes ?? undefined,
       } as any,
     });

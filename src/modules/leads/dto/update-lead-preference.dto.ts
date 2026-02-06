@@ -32,5 +32,10 @@ export class UpdateLeadPreferenceDto {
 
   @IsOptional()
   @IsString()
+  vehicleTypeId?: string;
+
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
