@@ -7,16 +7,25 @@ import { nanoid } from 'nanoid';
 export class VehiclesService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async list(storeId: string, q: { status?: VehicleStatus; published?: string }) {
+  async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string }) {
     const where: Prisma.VehicleWhereInput = { storeId, status: { not: 'ARCHIVED' } };
 
     if (q.status) where.status = q.status;
     if (q.published === 'true') where.isPublished = true;
     if (q.published === 'false') where.isPublished = false;
 
+    if (q.search) {
+      where.OR = [
+        { title: { contains: q.search, mode: 'insensitive' } },
+        { publicId: { contains: q.search, mode: 'insensitive' } },
+        { brand: { name: { contains: q.search, mode: 'insensitive' } } },
+        { model: { name: { contains: q.search, mode: 'insensitive' } } },
+      ];
+    }
+
     return this.prisma.vehicle.findMany({
       where,
-      include: { brand: true, model: true, branch: true, media: true, sale: true },
+      include: { brand: true, model: true, branch: true, media: true, sale: true, vehicleType: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -24,7 +33,7 @@ export class VehiclesService {
   async get(storeId: string, id: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id, storeId },
-      include: { brand: true, model: true, branch: true, media: true, reservation: true, sale: true },
+      include: { brand: true, model: true, branch: true, media: true, reservation: true, sale: true, vehicleType: true },
     });
     if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
     return v;
@@ -42,6 +51,7 @@ export class VehiclesService {
         publicId: nanoid(10),
         brandId: dto.brandId,
         modelId: dto.modelId,
+        vehicleTypeId: dto.vehicleTypeId,
         title: dto.title,
         description: dto.description,
         year: dto.year,
@@ -85,6 +95,7 @@ export class VehiclesService {
         branchId: dto.branchId,
         brandId: dto.brandId,
         modelId: dto.modelId,
+        vehicleTypeId: dto.vehicleTypeId,
         title: dto.title,
         description: dto.description,
         year: dto.year,

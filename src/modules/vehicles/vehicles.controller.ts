@@ -19,8 +19,9 @@ export class VehiclesController {
     @Req() req: any,
     @Query('status') status?: VehicleStatus,
     @Query('published') published?: string,
+    @Query('search') search?: string,
   ) {
-    return this.vehicles.list(req.storeId, { status, published });
+    return this.vehicles.list(req.storeId, { status, published, search });
   }
 
   @Get(':id')

@@ -145,6 +145,8 @@ model User {
 
   roles         UserRole[]
   refreshTokens RefreshToken[]
+  resetToken          String?   @map("reset_token")
+  resetTokenExpiresAt DateTime? @map("reset_token_expires_at")
 
   createdVehicles  Vehicle[]              @relation("VehicleCreatedBy")
   changedStatuses  VehicleStatusHistory[] @relation("VehicleStatusChangedBy")

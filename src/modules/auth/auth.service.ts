@@ -19,7 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly tenant: TenantContextService,
-  ) {}
+  ) { }
 
   private signAccessToken(user: { id: string; email: string; isSuperAdmin: boolean }) {
     const payload: AppJwtPayload = { sub: user.id, email: user.email, isSuperAdmin: !!user.isSuperAdmin };
@@ -144,10 +144,77 @@ export class AuthService {
     return { accessToken: this.signAccessToken(user) };
   }
 
-  async me(userId: string) {
-    return this.prisma.user.findUnique({
+  async me(userId: string, storeId?: string) {
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, fullName: true, isSuperAdmin: true, createdAt: true },
     });
+    if (!user) return null;
+
+    let roles: string[] = [];
+    if (storeId) {
+      const ur = await this.prisma.userRole.findMany({
+        where: { userId, storeId },
+        include: { role: true },
+      });
+      roles = ur.map((r) => r.role.key);
+    }
+
+    return { ...user, roles };
+  }
+
+  async forgotPassword(email: string, req?: any) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    const ctx = req ? await this.tenant.resolveByRequest(req) : { mode: 'unknown' as const };
+
+    if (!user) {
+      throw new UnauthorizedException('El correo proporcionado no pertenece a ningún usuario registrado.');
+    }
+
+    if (ctx.mode === 'tenant') {
+      const membership = await this.prisma.userRole.findFirst({
+        where: { userId: user.id, storeId: ctx.store?.id },
+      });
+      if (!membership && !user.isSuperAdmin) {
+        throw new UnauthorizedException('El correo proporcionado no pertenece a ningún usuario de esta tienda.');
+      }
+    }
+
+    const resetToken = Array.from({ length: 64 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
+    const resetTokenExpiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken, resetTokenExpiresAt },
+    });
+
+    // In a real app, send email here
+    console.log(`[ForgotPassword] Token for ${email}: ${resetToken}`);
+
+    return { message: 'Se ha enviado un correo con las instrucciones.', mockToken: resetToken };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!user) throw new UnauthorizedException('Invalid or expired token');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiresAt: null,
+      },
+    });
+
+    return { message: 'Password reset successfully' };
   }
 }

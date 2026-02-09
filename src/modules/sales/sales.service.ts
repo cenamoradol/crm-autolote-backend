@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async list(storeId: string, q: { soldByUserId?: string }) {
     return this.prisma.vehicleSale.findMany({
@@ -22,7 +22,8 @@ export class SalesService {
     });
   }
 
-  async create(storeId: string, soldByUserId: string, dto: any) {
+  async create(storeId: string, currentUserId: string, dto: any) {
+    const soldByUserId = dto.soldByUserId || currentUserId;
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: dto.vehicleId, storeId },
     });
@@ -71,7 +72,7 @@ export class SalesService {
           vehicleId: dto.vehicleId,
           fromStatus: vehicle.status,
           toStatus: 'SOLD',
-          changedByUserId: soldByUserId,
+          changedByUserId: currentUserId,
           changedAt: now,
         },
       });
@@ -81,6 +82,35 @@ export class SalesService {
 
     return this.prisma.vehicleSale.findFirst({
       where: { id: sale.id, storeId },
+      include: {
+        vehicle: { include: { brand: true, model: true, branch: true } },
+        customer: true,
+        lead: true,
+        soldBy: { select: { id: true, email: true, fullName: true } },
+      },
+    });
+  }
+
+  async update(storeId: string, id: string, dto: any) {
+    const sale = await this.prisma.vehicleSale.findFirst({
+      where: { id, storeId },
+    });
+    if (!sale) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Venta no encontrada.' });
+
+    const data: any = {
+      customerId: dto.customerId,
+      leadId: dto.leadId,
+      notes: dto.notes,
+      soldByUserId: dto.soldByUserId,
+      soldPrice: dto.soldPrice ? new Prisma.Decimal(dto.soldPrice) : undefined,
+    };
+
+    // Remove undefined
+    Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
+
+    return this.prisma.vehicleSale.update({
+      where: { id },
+      data,
       include: {
         vehicle: { include: { brand: true, model: true, branch: true } },
         customer: true,
