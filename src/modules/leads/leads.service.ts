@@ -157,7 +157,7 @@ export class LeadsService {
 
     if (dto.customerId) await this.ensureCustomerInStore(storeId, dto.customerId);
 
-    return this.prisma.lead.create({
+    const lead = await this.prisma.lead.create({
       data: {
         storeId,
         status: (dto.status as LeadStatus) ?? LeadStatus.NEW,
@@ -174,6 +174,19 @@ export class LeadsService {
         assignedTo: { select: { id: true, fullName: true, email: true } },
       },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Lead creado: ${lead.fullName || 'Nuevo Lead'}`,
+        leadId: lead.id,
+        customerId: lead.customerId ?? undefined,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return lead;
   }
 
   async update(storeId: string, userId: string, id: string, dto: UpdateLeadDto) {
@@ -181,7 +194,7 @@ export class LeadsService {
 
     const lead = await this.prisma.lead.findFirst({
       where: { id, storeId },
-      select: { id: true, assignedToUserId: true },
+      select: { id: true, assignedToUserId: true, fullName: true },
     });
     if (!lead) throw new NotFoundException('LEAD_NOT_FOUND');
 
@@ -198,7 +211,7 @@ export class LeadsService {
 
     if (dto.customerId) await this.ensureCustomerInStore(storeId, dto.customerId);
 
-    return this.prisma.lead.update({
+    const updated = await this.prisma.lead.update({
       where: { id } as any,
       data: {
         status: dto.status ?? undefined,
@@ -215,16 +228,39 @@ export class LeadsService {
         assignedTo: { select: { id: true, fullName: true, email: true } },
       },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Lead actualizado: ${updated.fullName || lead.fullName}`,
+        leadId: updated.id,
+        customerId: updated.customerId ?? undefined,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return updated;
   }
 
   async remove(storeId: string, userId: string, id: string) {
     const role = await this.getHighestRoleInStore(userId, storeId);
     if (role === 'seller') throw new ForbiddenException('SELLER_CANNOT_DELETE');
 
-    const lead = await this.prisma.lead.findFirst({ where: { id, storeId }, select: { id: true } });
+    const lead = await this.prisma.lead.findFirst({ where: { id, storeId }, select: { id: true, fullName: true } });
     if (!lead) throw new NotFoundException('LEAD_NOT_FOUND');
 
     await this.prisma.lead.delete({ where: { id } as any });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Lead eliminado: ${lead.fullName} (ID: ${id})`,
+        createdByUserId: userId,
+      } as any,
+    });
+
     return { ok: true };
   }
 
@@ -233,23 +269,48 @@ export class LeadsService {
     if (role === 'seller') throw new ForbiddenException('SELLER_CANNOT_ASSIGN');
 
     await this.assertLeadWritable(storeId, userId, leadId);
-    await this.ensureSellerInStore(storeId, assignedToUserId);
+    const assignee = await this.prisma.userRole.findFirst({ where: { userId: assignedToUserId, storeId }, include: { user: true } });
+    if (!assignee) throw new ForbiddenException('ASSIGNEE_NOT_IN_STORE');
 
-    return this.prisma.lead.update({
+    const updated = await this.prisma.lead.update({
       where: { id: leadId } as any,
       data: { assignedToUserId } as any,
       include: { preference: true, customer: true, assignedTo: { select: { id: true, fullName: true, email: true } } },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Lead asignado a: ${updated.assignedTo?.fullName || updated.assignedTo?.email}`,
+        leadId: updated.id,
+        createdByUserId: userId, // The admin/supervisor who did the assignment
+      } as any,
+    });
+
+    return updated;
   }
 
   async updateStatus(storeId: string, userId: string, leadId: string, status: string) {
     await this.assertLeadWritable(storeId, userId, leadId);
 
-    return this.prisma.lead.update({
+    const updated = await this.prisma.lead.update({
       where: { id: leadId } as any,
       data: { status } as any,
       include: { preference: true, customer: true, assignedTo: { select: { id: true, fullName: true, email: true } } },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Estado de Lead cambiado a: ${status}`,
+        leadId: updated.id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return updated;
   }
 
   // -------- Preference --------

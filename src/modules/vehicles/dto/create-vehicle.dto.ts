@@ -12,6 +12,10 @@ export class CreateVehicleDto {
 
   @IsOptional()
   @IsString()
+  vehicleTypeId?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(2)
   title?: string;
 

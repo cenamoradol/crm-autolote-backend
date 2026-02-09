@@ -15,6 +15,10 @@ export class UpdateVehicleDto {
 
   @IsOptional()
   @IsString()
+  vehicleTypeId?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(2)
   title?: string;
 

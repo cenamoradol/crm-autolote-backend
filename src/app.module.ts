@@ -23,6 +23,7 @@ import { HealthModule } from './modules/health/health.module';
 // Context (tenant por dominio)
 import { TenantContextModule } from './common/tenant/tenant-context.module';
 import { ContextModule } from './modules/context/context.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 // SuperAdmin
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
@@ -81,6 +82,7 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     ...(AUDIT_ENABLED ? [QueuesModule, AuditModule] : []),
 
     VehicleTypesModule,
+    DashboardModule,
   ],
   providers: [
     // Rate limit global
@@ -91,12 +93,12 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
 
     ...(AUDIT_ENABLED
       ? [
-          {
-            provide: APP_INTERCEPTOR,
-            useClass: AuditInterceptor,
-          },
-        ]
+        {
+          provide: APP_INTERCEPTOR,
+          useClass: AuditInterceptor,
+        },
+      ]
       : []),
   ],
 })
-export class AppModule {}
+export class AppModule { }

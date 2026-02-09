@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async list(storeId: string, q: { status?: VehicleStatus; published?: string }) {
     const where: Prisma.VehicleWhereInput = { storeId, status: { not: 'ARCHIVED' } };
@@ -35,7 +35,7 @@ export class VehiclesService {
     const branch = await this.prisma.branch.findFirst({ where: { id: dto.branchId, storeId } });
     if (!branch) throw new BadRequestException({ code: 'INVALID_BRANCH', message: 'Branch inválido.' });
 
-    return this.prisma.vehicle.create({
+    const vehicle = await this.prisma.vehicle.create({
       data: {
         storeId,
         branchId: dto.branchId,
@@ -56,10 +56,22 @@ export class VehiclesService {
         status: 'AVAILABLE',
       },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Vehículo creado: ${vehicle.title || vehicle.publicId}`,
+        vehicleId: vehicle.id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return vehicle;
   }
 
-  async update(storeId: string, id: string, dto: any) {
-    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId } });
+  async update(storeId: string, userId: string, id: string, dto: any) {
+    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true } });
     if (!current) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
 
     if (dto.branchId) {
@@ -67,7 +79,7 @@ export class VehiclesService {
       if (!branch) throw new BadRequestException({ code: 'INVALID_BRANCH', message: 'Branch inválido.' });
     }
 
-    return this.prisma.vehicle.update({
+    const updated = await this.prisma.vehicle.update({
       where: { id },
       data: {
         branchId: dto.branchId,
@@ -85,25 +97,61 @@ export class VehiclesService {
         isPublished: typeof dto.isPublished === 'boolean' ? dto.isPublished : undefined,
       },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Vehículo actualizado: ${updated.title || current.title}`,
+        vehicleId: updated.id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return updated;
   }
 
-  async archive(storeId: string, id: string) {
-    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId } });
+  async archive(storeId: string, userId: string, id: string) {
+    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true } });
     if (!current) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
 
-    return this.prisma.vehicle.update({
+    await this.prisma.vehicle.update({
       where: { id },
       data: { status: 'ARCHIVED', isPublished: false },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Vehículo archivado: ${current.title}`,
+        vehicleId: current.id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return { ok: true };
   }
 
-  async setPublish(storeId: string, id: string, isPublished: boolean) {
-    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId } });
+  async setPublish(storeId: string, userId: string, id: string, isPublished: boolean) {
+    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true } });
     if (!current) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
 
-    return this.prisma.vehicle.update({
+    await this.prisma.vehicle.update({
       where: { id },
       data: { isPublished },
     });
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Vehículo ${isPublished ? 'publicado' : 'despublicado'}: ${current.title}`,
+        vehicleId: current.id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return { ok: true };
   }
 }

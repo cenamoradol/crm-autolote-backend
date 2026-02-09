@@ -12,7 +12,7 @@ import { VehicleStatus } from '@prisma/client';
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
 export class VehiclesController {
-  constructor(private readonly vehicles: VehiclesService) {}
+  constructor(private readonly vehicles: VehiclesService) { }
 
   @Get()
   list(
@@ -37,18 +37,18 @@ export class VehiclesController {
   @Patch(':id')
   @Roles('admin', 'supervisor', 'seller')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateVehicleDto) {
-    return this.vehicles.update(req.storeId, id, dto);
+    return this.vehicles.update(req.storeId, req.user.sub, id, dto);
   }
 
   @Patch(':id/publish')
   @Roles('admin', 'supervisor', 'seller')
   publish(@Req() req: any, @Param('id') id: string, @Body() body: { isPublished: boolean }) {
-    return this.vehicles.setPublish(req.storeId, id, !!body?.isPublished);
+    return this.vehicles.setPublish(req.storeId, req.user.sub, id, !!body?.isPublished);
   }
 
   @Delete(':id')
   @Roles('admin', 'supervisor')
   archive(@Req() req: any, @Param('id') id: string) {
-    return this.vehicles.archive(req.storeId, id);
+    return this.vehicles.archive(req.storeId, req.user.sub, id);
   }
 }

@@ -51,6 +51,7 @@ enum ActivityType {
   EMAIL
   MEETING
   NOTE
+  SYSTEM
 }
 
 enum RoleKey {

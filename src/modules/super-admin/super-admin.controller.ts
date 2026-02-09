@@ -8,12 +8,14 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 import { CreateDomainDto } from './dto/create-domain.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateBranchDto } from './dto/create-branch.dto';
+import { UpdateBranchDto } from './dto/update-branch.dto';
 import { AssignMemberDto } from './dto/assign-member.dto';
 
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
 @Controller('sa')
 export class SuperAdminController {
-  constructor(private readonly sa: SuperAdminService) {}
+  constructor(private readonly sa: SuperAdminService) { }
 
   // -------- Stores --------
   @Post('stores')
@@ -47,6 +49,31 @@ export class SuperAdminController {
     return this.sa.removeStoreDomain(storeId, domainId);
   }
 
+  // -------- Branches --------
+  @Get('stores/:id/branches')
+  listBranches(@Param('id') storeId: string) {
+    return this.sa.listStoreBranches(storeId);
+  }
+
+  @Post('stores/:id/branches')
+  createBranch(@Param('id') storeId: string, @Body() dto: CreateBranchDto) {
+    return this.sa.createBranch(storeId, dto);
+  }
+
+  @Patch('stores/:id/branches/:branchId')
+  updateBranch(
+    @Param('id') storeId: string,
+    @Param('branchId') branchId: string,
+    @Body() dto: UpdateBranchDto
+  ) {
+    return this.sa.updateBranch(storeId, branchId, dto);
+  }
+
+  @Delete('stores/:id/branches/:branchId')
+  removeBranch(@Param('id') storeId: string, @Param('branchId') branchId: string) {
+    return this.sa.removeBranch(storeId, branchId);
+  }
+
   // -------- Members --------
   @Get('stores/:id/members')
   listMembers(@Param('id') storeId: string) {
@@ -65,8 +92,8 @@ export class SuperAdminController {
   }
 
   @Get('users')
-  listUsers(@Query('q') q?: string) {
-    return this.sa.listUsers(q);
+  listUsers(@Query('q') q?: string, @Query('storeId') storeId?: string) {
+    return this.sa.listUsers(q, storeId);
   }
 
   @Patch('users/:id')

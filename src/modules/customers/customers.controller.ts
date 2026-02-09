@@ -12,7 +12,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 @Controller('customers')
 @UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
 export class CustomersController {
-  constructor(private readonly customers: CustomersService) {}
+  constructor(private readonly customers: CustomersService) { }
 
   @Get()
   list(
@@ -36,18 +36,18 @@ export class CustomersController {
   @Post()
   @Roles('admin', 'supervisor', 'seller')
   create(@Req() req: any, @Body() dto: CreateCustomerDto) {
-    return this.customers.create(req.storeId, dto);
+    return this.customers.create(req.storeId, req.user.sub, dto);
   }
 
   @Patch(':id')
   @Roles('admin', 'supervisor', 'seller')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateCustomerDto) {
-    return this.customers.update(req.storeId, id, dto);
+    return this.customers.update(req.storeId, req.user.sub, id, dto);
   }
 
   @Delete(':id')
   @Roles('admin', 'supervisor')
   remove(@Req() req: any, @Param('id') id: string) {
-    return this.customers.remove(req.storeId, id);
+    return this.customers.remove(req.storeId, req.user.sub, id);
   }
 }
