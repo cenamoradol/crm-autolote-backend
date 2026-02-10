@@ -206,11 +206,29 @@ export class SuperAdminService {
   }) {
     const email = dto.email.trim().toLowerCase();
     const exists = await this.prisma.user.findUnique({ where: { email } });
-    if (exists) {
+
+    if (exists && exists.isActive) {
       throw new BadRequestException({ code: 'EMAIL_TAKEN', message: 'Ese email ya existe.' });
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    if (exists && !exists.isActive) {
+      // Reactivate user (was soft deleted)
+      return this.prisma.user.update({
+        where: { id: exists.id },
+        data: {
+          isActive: true,
+          passwordHash, // Set new password
+          fullName: dto.fullName?.trim() || exists.fullName,
+          isSuperAdmin: !!dto.isSuperAdmin,
+          resetToken: null,
+          resetTokenExpiresAt: null,
+          // We don't restore roles automatically
+        },
+        select: { id: true, email: true, fullName: true, isSuperAdmin: true, isActive: true, createdAt: true },
+      });
+    }
 
     return this.prisma.user.create({
       data: {
@@ -411,7 +429,22 @@ export class SuperAdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
 
-    await this.prisma.user.delete({ where: { id: userId } });
+    // Soft delete: deactivate, remove roles and sessions
+    await this.prisma.$transaction([
+      this.prisma.userRole.deleteMany({ where: { userId } }),
+      this.prisma.refreshToken.deleteMany({ where: { userId } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          isActive: false,
+          passwordHash: 'DELETED', // Invalidate password
+          resetToken: null,
+          resetTokenExpiresAt: null,
+          isSuperAdmin: false // Remove privilege if any
+        }
+      })
+    ]);
+
     return { success: true };
   }
 
