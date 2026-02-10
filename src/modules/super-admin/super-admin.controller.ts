@@ -106,6 +106,11 @@ export class SuperAdminController {
     return this.sa.updateUser(userId, dto);
   }
 
+  @Delete('users/:id')
+  deleteUser(@Param('id') userId: string) {
+    return this.sa.deleteUser(userId);
+  }
+
   // -------- Roles --------
   @Get('roles')
   listRoles() {

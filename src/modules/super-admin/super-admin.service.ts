@@ -390,7 +390,7 @@ export class SuperAdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
 
-    // Verify if the user belongs to the store before trying to delete
+    // Verify membership
     const membership = await this.prisma.userRole.findFirst({
       where: { storeId, userId },
     });
@@ -399,12 +399,20 @@ export class SuperAdminService {
       throw new NotFoundException({ code: 'MEMBERSHIP_NOT_FOUND', message: 'El usuario no pertenece a esta store.' });
     }
 
-    // Delete all roles associated with this user in this store
+    // Delete roles (unlink)
     await this.prisma.userRole.deleteMany({
       where: { storeId, userId },
     });
 
     return this.listStoreMembers(storeId);
+  }
+
+  async deleteUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
+
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { success: true };
   }
 
   // ---------- Branches ----------
