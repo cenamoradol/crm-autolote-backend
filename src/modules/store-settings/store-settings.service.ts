@@ -4,7 +4,7 @@ import { randomBytes, createHash } from 'crypto';
 
 @Injectable()
 export class StoreSettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private normalizeDomain(domain: string) {
     return domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
@@ -174,5 +174,44 @@ export class StoreSettingsService {
 
     await this.prisma.storeApiKey.delete({ where: { id } });
     return { ok: true };
+  }
+
+  async listMembers(storeId: string, q?: string) {
+    const where: any = {
+      storeId,
+      user: { isActive: true }
+    };
+
+    if (q) {
+      where.user = {
+        ...where.user,
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { fullName: { contains: q, mode: 'insensitive' } },
+        ]
+      };
+    }
+
+    const members = await this.prisma.userRole.findMany({
+      where,
+      include: {
+        user: {
+          select: { id: true, email: true, fullName: true, isActive: true }
+        },
+        role: {
+          select: { id: true, key: true, name: true }
+        }
+      },
+      take: 20
+    });
+
+    return {
+      items: members.map(m => ({
+        id: m.user.id,
+        email: m.user.email,
+        fullName: m.user.fullName,
+        role: m.role.name
+      }))
+    };
   }
 }

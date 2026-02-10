@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { StoreSettingsService } from './store-settings.service';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
@@ -15,7 +15,7 @@ import { CreateApiKeyDto } from './dto/create-api-key.dto';
 @Controller('store-settings')
 @UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
 export class StoreSettingsController {
-  constructor(private readonly settings: StoreSettingsService) {}
+  constructor(private readonly settings: StoreSettingsService) { }
 
   // -------- Branding --------
   @Get('branding')
@@ -78,5 +78,12 @@ export class StoreSettingsController {
   @Roles('admin')
   deleteApiKey(@Req() req: any, @Param('id') id: string) {
     return this.settings.deleteApiKey(req.storeId, id);
+  }
+
+  // -------- Members (for lookups) --------
+  @Get('members')
+  @Roles('admin', 'supervisor', 'seller')
+  listMembers(@Req() req: any, @Query('q') q?: string) {
+    return this.settings.listMembers(req.storeId, q);
   }
 }
