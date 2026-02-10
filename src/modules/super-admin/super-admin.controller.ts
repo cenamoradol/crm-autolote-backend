@@ -85,6 +85,11 @@ export class SuperAdminController {
     return this.sa.assignMember(storeId, dto);
   }
 
+  @Delete('stores/:id/members/:userId')
+  removeMember(@Param('id') storeId: string, @Param('userId') userId: string) {
+    return this.sa.removeMember(storeId, userId);
+  }
+
   // -------- Users --------
   @Post('users')
   createUser(@Body() dto: CreateUserDto) {

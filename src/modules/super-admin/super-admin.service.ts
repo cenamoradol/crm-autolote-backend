@@ -381,76 +381,101 @@ export class SuperAdminService {
       }
     });
 
+  });
+
     return this.listStoreMembers(storeId);
   }
 
+  async removeMember(storeId: string, userId: string) {
+  await this.getStore(storeId);
+
+  const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
+
+  // Verify if the user belongs to the store before trying to delete
+  const membership = await this.prisma.userRole.findFirst({
+    where: { storeId, userId },
+  });
+
+  if (!membership) {
+    throw new NotFoundException({ code: 'MEMBERSHIP_NOT_FOUND', message: 'El usuario no pertenece a esta store.' });
+  }
+
+  // Delete all roles associated with this user in this store
+  await this.prisma.userRole.deleteMany({
+    where: { storeId, userId },
+  });
+
+  return this.listStoreMembers(storeId);
+}
+
   // ---------- Branches ----------
   async listStoreBranches(storeId: string) {
-    return this.prisma.branch.findMany({
-      where: { storeId },
-      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-    });
-  }
+  return this.prisma.branch.findMany({
+    where: { storeId },
+    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+  });
+}
 
   async createBranch(storeId: string, dto: { name: string; address?: string; isPrimary?: boolean }) {
-    await this.getStore(storeId);
+  await this.getStore(storeId);
 
-    return this.prisma.$transaction(async (tx) => {
-      if (dto.isPrimary) {
-        await tx.branch.updateMany({ where: { storeId }, data: { isPrimary: false } });
-      }
+  return this.prisma.$transaction(async (tx) => {
+    if (dto.isPrimary) {
+      await tx.branch.updateMany({ where: { storeId }, data: { isPrimary: false } });
+    }
 
-      await tx.branch.create({
-        data: {
-          storeId,
-          name: dto.name.trim(),
-          address: dto.address?.trim() || null,
-          isPrimary: !!dto.isPrimary,
-        },
-      });
-
-      return this.getStore(storeId);
+    await tx.branch.create({
+      data: {
+        storeId,
+        name: dto.name.trim(),
+        address: dto.address?.trim() || null,
+        isPrimary: !!dto.isPrimary,
+      },
     });
-  }
+
+    return this.getStore(storeId);
+  });
+}
 
   async updateBranch(storeId: string, branchId: string, dto: { name?: string; address?: string; isPrimary?: boolean }) {
-    await this.getStore(storeId);
+  await this.getStore(storeId);
 
-    const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
-    if (!branch || branch.storeId !== storeId) {
-      throw new NotFoundException({ code: 'BRANCH_NOT_FOUND', message: 'Sucursal no existe.' });
+  const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+  if (!branch || branch.storeId !== storeId) {
+    throw new NotFoundException({ code: 'BRANCH_NOT_FOUND', message: 'Sucursal no existe.' });
+  }
+
+  const data: any = {};
+  if (dto.name !== undefined) data.name = dto.name.trim();
+  if (dto.address !== undefined) data.address = dto.address?.trim() || null;
+  if (dto.isPrimary !== undefined) data.isPrimary = dto.isPrimary;
+
+  return this.prisma.$transaction(async (tx) => {
+    if (dto.isPrimary) {
+      await tx.branch.updateMany({ where: { storeId }, data: { isPrimary: false } });
     }
 
-    const data: any = {};
-    if (dto.name !== undefined) data.name = dto.name.trim();
-    if (dto.address !== undefined) data.address = dto.address?.trim() || null;
-    if (dto.isPrimary !== undefined) data.isPrimary = dto.isPrimary;
+    await tx.branch.update({ where: { id: branchId }, data });
 
-    return this.prisma.$transaction(async (tx) => {
-      if (dto.isPrimary) {
-        await tx.branch.updateMany({ where: { storeId }, data: { isPrimary: false } });
-      }
+    // Ensure at least one primary exists if we just turned off primary? 
+    // Simplified: Just update. If no primary, logic might break elsewhere but for now it's fine.
 
-      await tx.branch.update({ where: { id: branchId }, data });
-
-      // Ensure at least one primary exists if we just turned off primary? 
-      // Simplified: Just update. If no primary, logic might break elsewhere but for now it's fine.
-
-      return this.getStore(storeId);
-    });
-  }
+    return this.getStore(storeId);
+  });
+}
 
   async removeBranch(storeId: string, branchId: string) {
-    await this.getStore(storeId);
-    const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
-    if (!branch || branch.storeId !== storeId) {
-      throw new NotFoundException({ code: 'BRANCH_NOT_FOUND', message: 'Sucursal no existe.' });
-    }
-
-    // Prevent deleting the only primary branch maybe?
-    // For now, allow delete.
-
-    await this.prisma.branch.delete({ where: { id: branchId } });
-    return this.getStore(storeId);
+  await this.getStore(storeId);
+  const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+  if (!branch || branch.storeId !== storeId) {
+    throw new NotFoundException({ code: 'BRANCH_NOT_FOUND', message: 'Sucursal no existe.' });
   }
+
+  // Prevent deleting the only primary branch maybe?
+  // For now, allow delete.
+
+  await this.prisma.branch.delete({ where: { id: branchId } });
+  return this.getStore(storeId);
+}
 }
