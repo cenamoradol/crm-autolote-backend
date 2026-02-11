@@ -25,7 +25,7 @@ export class VehiclesService {
 
     return this.prisma.vehicle.findMany({
       where,
-      include: { brand: true, model: true, branch: true, media: true, sale: true, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: true, sale: { include: { customer: true, lead: true } }, vehicleType: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -33,7 +33,7 @@ export class VehiclesService {
   async get(storeId: string, id: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id, storeId },
-      include: { brand: true, model: true, branch: true, media: true, reservation: true, sale: true, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: true, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true } }, vehicleType: true },
     });
     if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
     return v;
