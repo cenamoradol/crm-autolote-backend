@@ -249,6 +249,7 @@ model Vehicle {
   stockNumber String? @map("stock_number")
   color       String?
   transmission String?
+  engineSize   Float?   @map("engine_size")
   fuelType     String? @map("fuel_type")
 
   soldAt      DateTime? @map("sold_at")
