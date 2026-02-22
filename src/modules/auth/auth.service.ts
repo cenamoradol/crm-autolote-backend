@@ -192,11 +192,33 @@ export class AuthService {
       data: { resetToken, resetTokenExpiresAt },
     });
 
-    const origin = req?.headers?.origin || req?.headers?.referer || 'http://localhost:3000';
+    let origin = '';
+
+    // Intentar obtener el dominio primario de la tienda si estamos en contexto tenant
+    if (ctx.mode === 'tenant' && ctx.store?.id) {
+      const primaryDomain = await this.prisma.storeDomain.findFirst({
+        where: { storeId: ctx.store.id, isPrimary: true },
+        select: { domain: true },
+      });
+
+      if (primaryDomain) {
+        origin = `https://${primaryDomain.domain}`;
+      }
+    }
+
+    // Si no hay dominio primario (o es SuperAdmin/Master), usamos el host del request como fallback
+    if (!origin) {
+      const host = req?.headers?.['x-forwarded-host'] || req?.headers?.host || 'localhost:3000';
+      const protocol = req?.headers?.['x-forwarded-proto'] || (host.includes('localhost') ? 'http' : 'https');
+      origin = `${protocol}://${host}`;
+    }
+
     await this.mail.sendForgotPasswordEmail(email, resetToken, origin);
 
     return { message: 'Se ha enviado un correo con las instrucciones.', mockToken: resetToken };
   }
+
+
 
 
   async resetPassword(token: string, newPassword: string) {
