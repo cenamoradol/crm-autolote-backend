@@ -3,6 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { MailService } from '../mail/mail.service';
+
 
 export type AppJwtPayload = {
   sub: string;
@@ -19,7 +21,9 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly tenant: TenantContextService,
+    private readonly mail: MailService,
   ) { }
+
 
   private signAccessToken(user: { id: string; email: string; isSuperAdmin: boolean }) {
     const payload: AppJwtPayload = { sub: user.id, email: user.email, isSuperAdmin: !!user.isSuperAdmin };
@@ -188,11 +192,12 @@ export class AuthService {
       data: { resetToken, resetTokenExpiresAt },
     });
 
-    // In a real app, send email here
-    console.log(`[ForgotPassword] Token for ${email}: ${resetToken}`);
+    const origin = req?.headers?.origin || req?.headers?.referer || 'http://localhost:3000';
+    await this.mail.sendForgotPasswordEmail(email, resetToken, origin);
 
     return { message: 'Se ha enviado un correo con las instrucciones.', mockToken: resetToken };
   }
+
 
   async resetPassword(token: string, newPassword: string) {
     const user = await this.prisma.user.findFirst({

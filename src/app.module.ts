@@ -37,6 +37,8 @@ import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './queues/audit/audit.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { VehicleTypesModule } from './modules/vehicle-types/vehicle-types.module';
+import { MailModule } from './modules/mail/mail.module';
+
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
 
@@ -83,7 +85,9 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
 
     VehicleTypesModule,
     DashboardModule,
+    MailModule,
   ],
+
   providers: [
     // Rate limit global
     {
