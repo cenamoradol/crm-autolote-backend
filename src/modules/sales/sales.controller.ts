@@ -20,13 +20,13 @@ export class SalesController {
   }
 
   @Post()
-  @Roles('admin', 'supervisor')
+  @Roles('admin')
   create(@Req() req: any, @Body() dto: CreateSaleDto) {
     return this.sales.create(req.storeId, req.user.sub, dto);
   }
 
   @Patch(':id')
-  @Roles('admin', 'supervisor')
+  @Roles('admin')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateSaleDto) {
     return this.sales.update(req.storeId, id, dto);
   }

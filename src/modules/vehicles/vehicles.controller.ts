@@ -30,19 +30,19 @@ export class VehiclesController {
   }
 
   @Post()
-  @Roles('admin', 'supervisor', 'seller')
+  @Roles('admin', 'supervisor')
   create(@Req() req: any, @Body() dto: CreateVehicleDto) {
     return this.vehicles.create(req.storeId, req.user.sub, dto);
   }
 
   @Patch(':id')
-  @Roles('admin', 'supervisor', 'seller')
+  @Roles('admin', 'supervisor')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateVehicleDto) {
     return this.vehicles.update(req.storeId, req.user.sub, id, dto);
   }
 
   @Patch(':id/publish')
-  @Roles('admin', 'supervisor', 'seller')
+  @Roles('admin', 'supervisor')
   publish(@Req() req: any, @Param('id') id: string, @Body() body: { isPublished: boolean }) {
     return this.vehicles.setPublish(req.storeId, req.user.sub, id, !!body?.isPublished);
   }

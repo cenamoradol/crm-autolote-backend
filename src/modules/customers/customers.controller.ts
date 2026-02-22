@@ -15,6 +15,7 @@ export class CustomersController {
   constructor(private readonly customers: CustomersService) { }
 
   @Get()
+  @Roles('admin', 'supervisor')
   list(
     @Req() req: any,
     @Query('q') q?: string,
@@ -29,18 +30,19 @@ export class CustomersController {
   }
 
   @Get(':id')
+  @Roles('admin', 'supervisor')
   get(@Req() req: any, @Param('id') id: string) {
     return this.customers.get(req.storeId, id);
   }
 
   @Post()
-  @Roles('admin', 'supervisor', 'seller')
+  @Roles('admin', 'supervisor')
   create(@Req() req: any, @Body() dto: CreateCustomerDto) {
     return this.customers.create(req.storeId, req.user.sub, dto);
   }
 
   @Patch(':id')
-  @Roles('admin', 'supervisor', 'seller')
+  @Roles('admin', 'supervisor')
   update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateCustomerDto) {
     return this.customers.update(req.storeId, req.user.sub, id, dto);
   }
