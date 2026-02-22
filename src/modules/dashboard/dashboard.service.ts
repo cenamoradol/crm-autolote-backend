@@ -9,8 +9,16 @@ export class DashboardService {
 
     async getKpis(storeId: string, filter: DashboardFilterDto) {
         const whereDate = {};
-        if (filter.startDate) whereDate['gte'] = new Date(filter.startDate);
-        if (filter.endDate) whereDate['lte'] = new Date(filter.endDate);
+        if (filter.startDate) {
+            const start = new Date(filter.startDate);
+            start.setUTCHours(0, 0, 0, 0);
+            whereDate['gte'] = start;
+        }
+        if (filter.endDate) {
+            const end = new Date(filter.endDate);
+            end.setUTCHours(23, 59, 59, 999);
+            whereDate['lte'] = end;
+        }
 
         const hasDateFilter = !!(filter.startDate || filter.endDate);
 
