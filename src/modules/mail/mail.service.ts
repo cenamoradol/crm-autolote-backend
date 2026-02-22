@@ -31,8 +31,9 @@ export class MailService {
         }
     }
 
-    async sendForgotPasswordEmail(to: string, token: string, host: string) {
-        const resetLink = `${host}/reset-password?token=${token}`;
+    async sendForgotPasswordEmail(to: string, token: string, origin: string) {
+        const baseUrl = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+        const resetLink = `${baseUrl}/reset-password?token=${token}`;
         const subject = 'Recuperar contraseña - CRM AutoLote';
         const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; rounded: 10px;">
