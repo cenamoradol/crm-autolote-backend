@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { nanoid } from 'nanoid';
+import { nanoid, customAlphabet } from 'nanoid';
+
+const genPublicId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 10);
 
 @Injectable()
 export class VehiclesService {
@@ -25,7 +27,7 @@ export class VehiclesService {
 
     return this.prisma.vehicle.findMany({
       where,
-      include: { brand: true, model: true, branch: true, media: true, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -33,7 +35,7 @@ export class VehiclesService {
   async get(storeId: string, id: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id, storeId },
-      include: { brand: true, model: true, branch: true, media: true, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
     });
     if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
     return v;
@@ -48,7 +50,7 @@ export class VehiclesService {
       data: {
         storeId,
         branchId: dto.branchId,
-        publicId: nanoid(10),
+        publicId: genPublicId(),
         brandId: dto.brandId,
         modelId: dto.modelId,
         vehicleTypeId: dto.vehicleTypeId,

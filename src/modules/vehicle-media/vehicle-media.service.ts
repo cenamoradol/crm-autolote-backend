@@ -10,7 +10,7 @@ export class VehicleMediaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly r2: R2Service,
-  ) {}
+  ) { }
 
   private roleRank(key: RoleKey) {
     if (key === 'admin') return 3;
@@ -67,7 +67,7 @@ export class VehicleMediaService {
 
     const data = await this.prisma.vehicleMedia.findMany({
       where: { vehicleId },
-      orderBy: [{ isCover: 'desc' }, { position: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
 
     return { data };
@@ -231,7 +231,7 @@ export class VehicleMediaService {
       for (const key of uploadedKeys) {
         try {
           await this.r2.deleteObject(key);
-        } catch {}
+        } catch { }
       }
       throw e;
     }
@@ -280,7 +280,7 @@ export class VehicleMediaService {
 
     const data = await this.prisma.vehicleMedia.findMany({
       where: { vehicleId },
-      orderBy: [{ isCover: 'desc' }, { position: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
 
     return { ok: true, data };
