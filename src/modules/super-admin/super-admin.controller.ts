@@ -74,7 +74,7 @@ export class SuperAdminController {
     return this.sa.removeBranch(storeId, branchId);
   }
 
-  // -------- Members --------
+  // -------- Members (Permisos) --------
   @Get('stores/:id/members')
   listMembers(@Param('id') storeId: string) {
     return this.sa.listStoreMembers(storeId);
@@ -101,6 +101,11 @@ export class SuperAdminController {
     return this.sa.listUsers(q, storeId);
   }
 
+  @Get('users/:id')
+  getUser(@Param('id') userId: string) {
+    return this.sa.getUser(userId);
+  }
+
   @Patch('users/:id')
   updateUser(@Param('id') userId: string, @Body() dto: UpdateUserDto) {
     return this.sa.updateUser(userId, dto);
@@ -109,11 +114,5 @@ export class SuperAdminController {
   @Delete('users/:id')
   deleteUser(@Param('id') userId: string) {
     return this.sa.deleteUser(userId);
-  }
-
-  // -------- Roles --------
-  @Get('roles')
-  listRoles() {
-    return this.sa.listRoles();
   }
 }

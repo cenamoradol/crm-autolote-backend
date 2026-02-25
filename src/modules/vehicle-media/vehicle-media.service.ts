@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { R2Service } from '../../common/r2/r2.service';
-import { MediaKind, RoleKey, VehicleMedia } from '@prisma/client';
+import { MediaKind, VehicleMedia } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 
@@ -12,26 +12,13 @@ export class VehicleMediaService {
     private readonly r2: R2Service,
   ) { }
 
-  private roleRank(key: RoleKey) {
-    if (key === 'admin') return 3;
-    if (key === 'supervisor') return 2;
-    return 1;
-  }
-
-  private async getHighestRoleInStore(userId: string, storeId: string): Promise<RoleKey> {
-    const rows = await this.prisma.userRole.findMany({
+  private async verifyUserInStore(userId: string, storeId: string): Promise<void> {
+    const membership = await this.prisma.userRole.findFirst({
       where: { userId, storeId },
-      include: { role: { select: { key: true } } },
+      select: { id: true },
     });
 
-    if (!rows.length) throw new ForbiddenException('STORE_ACCESS_DENIED');
-
-    let best: RoleKey = 'seller';
-    for (const r of rows) {
-      const key = r.role.key;
-      if (this.roleRank(key) > this.roleRank(best)) best = key;
-    }
-    return best;
+    if (!membership) throw new ForbiddenException('STORE_ACCESS_DENIED');
   }
 
   private async ensureVehicleInStore(storeId: string, vehicleId: string) {
@@ -62,7 +49,7 @@ export class VehicleMediaService {
   }
 
   async list(storeId: string, userId: string, vehicleId: string) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     const data = await this.prisma.vehicleMedia.findMany({
@@ -80,7 +67,7 @@ export class VehicleMediaService {
     file: Express.Multer.File,
     dto: { kind?: string; isCover?: boolean; position?: number },
   ) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     if (!file || !file.buffer?.length) throw new ForbiddenException('FILE_REQUIRED');
@@ -152,7 +139,7 @@ export class VehicleMediaService {
     files: Express.Multer.File[],
     dto: { isCoverFirst?: boolean; startPosition?: number },
   ) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     if (!files?.length) throw new ForbiddenException('FILES_REQUIRED');
@@ -238,7 +225,7 @@ export class VehicleMediaService {
   }
 
   async setCover(storeId: string, userId: string, vehicleId: string, mediaId: string) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     const media = await this.prisma.vehicleMedia.findFirst({
@@ -261,7 +248,7 @@ export class VehicleMediaService {
   }
 
   async reorder(storeId: string, userId: string, vehicleId: string, orderedIds: string[]) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     const count = await this.prisma.vehicleMedia.count({
@@ -287,7 +274,7 @@ export class VehicleMediaService {
   }
 
   async remove(storeId: string, userId: string, vehicleId: string, mediaId: string, deleteFile: boolean) {
-    await this.getHighestRoleInStore(userId, storeId);
+    await this.verifyUserInStore(userId, storeId);
     await this.ensureVehicleInStore(storeId, vehicleId);
 
     const media = await this.prisma.vehicleMedia.findFirst({

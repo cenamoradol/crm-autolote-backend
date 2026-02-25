@@ -3,35 +3,35 @@ import { BillingService } from './billing.service';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { StoreContextGuard } from '../../common/guards/store-context.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ApproveBankTransferDto } from './dto/approve-bank-transfer.dto';
 
 @Controller('billing')
-@UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, StoreContextGuard, PermissionsGuard)
 export class BillingController {
-  constructor(private readonly billing: BillingService) {}
+  constructor(private readonly billing: BillingService) { }
 
   // ✅ Para UI (banner de expiración, plan actual, etc.)
   @Get('status')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('billing:read')
   getStatus(@Req() req: any) {
     return this.billing.getStoreStatus(req.storeId);
   }
 
   // ✅ Planes activos globales
   @Get('plans')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('billing:read')
   listPlans() {
     return this.billing.listPlans();
   }
 
   // ✅ Listar suscripciones del store
   @Get('subscriptions')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('billing:update')
   listSubscriptions(
     @Req() req: any,
     @Query('page') page?: string,
@@ -47,35 +47,35 @@ export class BillingController {
 
   // ✅ Obtener una suscripción por id
   @Get('subscriptions/:id')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('billing:update')
   getSubscription(@Req() req: any, @Param('id') id: string) {
     return this.billing.getSubscription(req.storeId, id);
   }
 
   // ✅ Crear solicitud (PENDING)
   @Post('subscriptions')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('billing:update')
   createSubscription(@Req() req: any, @Body() dto: CreateSubscriptionDto) {
     return this.billing.createSubscription(req.storeId, req.user.sub, dto);
   }
 
   // ✅ Pagos
   @Get('subscriptions/:id/payments')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('billing:update')
   listPayments(@Req() req: any, @Param('id') subscriptionId: string) {
     return this.billing.listPayments(req.storeId, subscriptionId);
   }
 
   // ✅ Crear payment PENDING
   @Post('subscriptions/:id/payments')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('billing:update')
   createPayment(@Req() req: any, @Param('id') subscriptionId: string, @Body() dto: CreatePaymentDto) {
     return this.billing.createPayment(req.storeId, req.user.sub, subscriptionId, dto);
   }
 
   // ✅ Aprobar transferencia bancaria (admin) incluso si el store está expirado
   @Patch('subscriptions/:id/approve-bank-transfer')
-  @Roles('admin')
+  @RequirePermissions('billing:update')
   approveBankTransfer(
     @Req() req: any,
     @Param('id') subscriptionId: string,
@@ -86,7 +86,7 @@ export class BillingController {
 
   // ✅ Cancelar suscripción
   @Patch('subscriptions/:id/cancel')
-  @Roles('admin')
+  @RequirePermissions('billing:update')
   cancel(@Req() req: any, @Param('id') subscriptionId: string) {
     return this.billing.cancelSubscription(req.storeId, req.user.sub, subscriptionId);
   }

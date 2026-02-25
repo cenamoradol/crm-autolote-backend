@@ -1,11 +1,16 @@
-import { ArrayMinSize, IsArray, IsString } from 'class-validator';
-import { RoleKey } from '@prisma/client';
+import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class AssignMemberDto {
   @IsString()
+  @IsUUID()
   userId!: string;
 
-  @IsArray()
-  @ArrayMinSize(1)
-  roleKeys!: RoleKey[];
+  @IsOptional()
+  @IsObject()
+  permissions?: any;
+
+  @IsOptional()
+  @IsString()
+  @IsUUID()
+  permissionSetId?: string;
 }

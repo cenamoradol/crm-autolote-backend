@@ -2,15 +2,15 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nest
 import { BranchesService } from './branches.service';
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { StoreContextGuard } from '../../common/guards/store-context.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LicenseGuard } from '../../common/guards/license.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 import { CreateBranchDto } from './dto/create-branch.dto';
 
 @Controller('branches')
-@UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
+@UseGuards(JwtAuthGuard, StoreContextGuard, PermissionsGuard, LicenseGuard)
 export class BranchesController {
-  constructor(private readonly branches: BranchesService) {}
+  constructor(private readonly branches: BranchesService) { }
 
   @Get()
   list(@Req() req: any) {
@@ -18,13 +18,13 @@ export class BranchesController {
   }
 
   @Post()
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('store_settings:update')
   create(@Req() req: any, @Body() dto: CreateBranchDto) {
     return this.branches.create(req.storeId, dto);
   }
 
   @Patch(':id/set-primary')
-  @Roles('admin', 'supervisor')
+  @RequirePermissions('store_settings:update')
   setPrimary(@Req() req: any, @Param('id') id: string) {
     return this.branches.setPrimary(req.storeId, id);
   }

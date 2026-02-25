@@ -17,9 +17,9 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { StoreContextGuard } from '../../common/guards/store-context.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LicenseGuard } from '../../common/guards/license.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 
 import { VehicleMediaService } from './vehicle-media.service';
 import { UploadMediaDto } from './dto/upload-media.dto';
@@ -27,19 +27,19 @@ import { ReorderMediaDto } from './dto/reorder-media.dto';
 import { UploadManyMediaDto } from './dto/upload-many-media.dto';
 
 @Controller('vehicles/:vehicleId/media')
-@UseGuards(JwtAuthGuard, StoreContextGuard, RolesGuard, LicenseGuard)
+@UseGuards(JwtAuthGuard, StoreContextGuard, PermissionsGuard, LicenseGuard)
 export class VehicleMediaController {
-  constructor(private readonly media: VehicleMediaService) {}
+  constructor(private readonly media: VehicleMediaService) { }
 
   @Get()
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:read')
   list(@Req() req: any, @Param('vehicleId') vehicleId: string) {
     return this.media.list(req.storeId, req.user.sub, vehicleId);
   }
 
   // ✅ 1 archivo: sube a R2 + registra en BD (conversión a webp)
   @Post('upload')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:update')
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 8 * 1024 * 1024 }, // ✅ 8MB por archivo (ajusta aquí)
@@ -56,7 +56,7 @@ export class VehicleMediaController {
 
   // ✅ VARIOS archivos en 1 request: convierte a webp, sube, registra
   @Post('upload-many')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:update')
   @UseInterceptors(
     FilesInterceptor('files', 20, {
       limits: { fileSize: 8 * 1024 * 1024 }, // ✅ 8MB por archivo (ajusta aquí)
@@ -72,7 +72,7 @@ export class VehicleMediaController {
   }
 
   @Patch(':mediaId/cover')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:update')
   setCover(
     @Req() req: any,
     @Param('vehicleId') vehicleId: string,
@@ -82,7 +82,7 @@ export class VehicleMediaController {
   }
 
   @Patch('reorder')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:update')
   reorder(
     @Req() req: any,
     @Param('vehicleId') vehicleId: string,
@@ -92,7 +92,7 @@ export class VehicleMediaController {
   }
 
   @Delete(':mediaId')
-  @Roles('admin', 'supervisor', 'seller')
+  @RequirePermissions('inventory:update')
   remove(
     @Req() req: any,
     @Param('vehicleId') vehicleId: string,

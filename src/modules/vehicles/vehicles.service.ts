@@ -27,7 +27,7 @@ export class VehiclesService {
 
     return this.prisma.vehicle.findMany({
       where,
-      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -35,7 +35,7 @@ export class VehiclesService {
   async get(storeId: string, id: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id, storeId },
-      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true },
+      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
     });
     if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
     return v;
@@ -65,6 +65,7 @@ export class VehiclesService {
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : undefined,
         isPublished: dto.isPublished ?? false,
+        consignorId: dto.consignorId,
         createdByUserId: userId,
         status: 'AVAILABLE',
       },
@@ -110,6 +111,7 @@ export class VehiclesService {
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : dto.price === null ? null : undefined,
         isPublished: typeof dto.isPublished === 'boolean' ? dto.isPublished : undefined,
+        consignorId: dto.consignorId,
       },
     });
 

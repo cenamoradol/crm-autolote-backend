@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { RoleKey } from '@prisma/client';
+
 
 function normalizeDomain(domain: string): string {
   return domain.trim().toLowerCase().replace(/:\d+$/, '');
@@ -10,10 +10,6 @@ function normalizeDomain(domain: string): string {
 @Injectable()
 export class SuperAdminService {
   constructor(private readonly prisma: PrismaService) { }
-
-  async listRoles() {
-    return this.prisma.role.findMany({ orderBy: { name: 'asc' } });
-  }
 
   // ---------- Stores ----------
   async createStore(dto: {
@@ -100,7 +96,7 @@ export class SuperAdminService {
         memberships: {
           include: {
             user: { select: { id: true, email: true, fullName: true, isActive: true } },
-            role: { select: { id: true, key: true, name: true } },
+            permissionSet: { select: { name: true } }
           },
         },
       },
@@ -108,30 +104,21 @@ export class SuperAdminService {
 
     if (!store) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store no existe.' });
 
-    // Agrupamos miembros por usuario para que el frontend lo reciba plano
-    const membersMap = new Map<string, any>();
-    for (const membership of store.memberships) {
-      if (!membersMap.has(membership.userId)) {
-        membersMap.set(membership.userId, {
-          userId: membership.userId,
-          email: membership.user.email,
-          fullName: membership.user.fullName,
-          isActive: membership.user.isActive,
-          roles: [],
-        });
-      }
-      membersMap.get(membership.userId).roles.push({
-        id: membership.role.id,
-        key: membership.role.key,
-        name: membership.role.name,
-      });
-    }
+    // Agrupamos miembros por usuario
+    const members = store.memberships.map(m => ({
+      userId: m.userId,
+      email: m.user.email,
+      fullName: m.user.fullName,
+      isActive: m.user.isActive,
+      permissions: m.permissions as any,
+      permissionSetName: m.permissionSet?.name || null
+    }));
 
     const { memberships, ...rest } = store;
 
     return {
       ...rest,
-      members: Array.from(membersMap.values()),
+      members,
     };
   }
 
@@ -224,7 +211,6 @@ export class SuperAdminService {
           isSuperAdmin: !!dto.isSuperAdmin,
           resetToken: null,
           resetTokenExpiresAt: null,
-          // We don't restore roles automatically
         },
         select: { id: true, email: true, fullName: true, isSuperAdmin: true, isActive: true, createdAt: true },
       });
@@ -257,7 +243,7 @@ export class SuperAdminService {
             : {},
           storeId
             ? {
-              roles: {
+              memberships: {
                 some: {
                   storeId
                 }
@@ -274,7 +260,7 @@ export class SuperAdminService {
         isSuperAdmin: true,
         isActive: true,
         createdAt: true,
-        roles: {
+        memberships: {
           select: {
             store: {
               select: {
@@ -284,7 +270,7 @@ export class SuperAdminService {
               }
             }
           },
-          take: 1 // Optimization: we assume 1 store per user
+          take: 1 // Optimization: we assume 1 store per user in this context
         }
       },
     });
@@ -297,11 +283,47 @@ export class SuperAdminService {
       isSuperAdmin: u.isSuperAdmin,
       isActive: u.isActive,
       createdAt: u.createdAt,
-      store: u.roles[0]?.store || null
+      store: (u as any).memberships[0]?.store || null
     }));
   }
 
-  // ... (updateUser kept as is) ...
+  async getUser(userId: string) {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        isSuperAdmin: true,
+        isActive: true,
+        createdAt: true,
+        memberships: {
+          select: {
+            store: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          },
+          take: 1
+        }
+      },
+    });
+
+    if (!u) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
+
+    return {
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      isSuperAdmin: u.isSuperAdmin,
+      isActive: u.isActive,
+      createdAt: u.createdAt,
+      store: (u as any).memberships[0]?.store || null
+    };
+  }
 
   async updateUser(
     userId: string,
@@ -320,8 +342,6 @@ export class SuperAdminService {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
     }
 
-    // We don't return store info here for now, or we could refetch. 
-    // Keeping it simple as listUsers is main view.
     return this.prisma.user.update({
       where: { id: userId },
       data,
@@ -329,7 +349,7 @@ export class SuperAdminService {
     });
   }
 
-  // ---------- Members (roles por store) ----------
+  // ---------- Members (permisos por store) ----------
   async listStoreMembers(storeId: string) {
     await this.getStore(storeId);
 
@@ -337,66 +357,42 @@ export class SuperAdminService {
       where: { storeId },
       include: {
         user: { select: { id: true, email: true, fullName: true, isActive: true, isSuperAdmin: true } },
-        role: { select: { id: true, key: true, name: true } },
       },
-      orderBy: [{ userId: 'asc' }, { roleId: 'asc' }],
+      orderBy: { user: { email: 'asc' } },
     });
 
-    // agrupado por user
-    const map = new Map<
-      string,
-      {
-        user: any;
-        roles: { key: RoleKey; name: string; id: string }[];
-      }
-    >();
-
-    for (const m of members) {
-      const key = m.user.id;
-      const hit = map.get(key);
-      if (!hit) {
-        map.set(key, {
-          user: m.user,
-          roles: [{ key: m.role.key, name: m.role.name, id: m.role.id }],
-        });
-      } else {
-        hit.roles.push({ key: m.role.key, name: m.role.name, id: m.role.id });
-      }
-    }
-
-    return Array.from(map.values());
+    return members.map(m => ({
+      user: m.user,
+      permissions: m.permissions as any,
+    }));
   }
 
-  async assignMember(storeId: string, dto: { userId: string; roleKeys: RoleKey[] }) {
+  async assignMember(storeId: string, dto: { userId: string; permissions?: any; permissionSetId?: string }) {
     await this.getStore(storeId);
 
     const userId = dto.userId;
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
 
-    const roleKeys = dto.roleKeys;
-    if (!roleKeys || roleKeys.length === 0) {
-      throw new BadRequestException({ code: 'ROLE_REQUIRED', message: 'Debes enviar al menos un rol.' });
-    }
+    const permissions = dto.permissions || null;
+    const permissionSetId = dto.permissionSetId || null;
 
-    const roles = await this.prisma.role.findMany({
-      where: { key: { in: roleKeys } },
-      select: { id: true, key: true, name: true },
-    });
-
-    if (roles.length !== roleKeys.length) {
-      throw new BadRequestException({ code: 'INVALID_ROLE', message: 'Uno o más roles son inválidos.' });
+    if (!permissions && !permissionSetId) {
+      throw new BadRequestException({ code: 'INVALID_ASSIGNMENT', message: 'Debe proporcionar permisos directos o un conjunto de permisos.' });
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // ENFORCE 1 STORE PER USER:
-      // Delete ALL previous roles for this user, regardless of storeId.
-      // This effectively moves the user to the new store if they were elsewhere.
+      // ENFORCE 1 STORE PER USER (as per implementation design):
       await tx.userRole.deleteMany({ where: { userId } });
 
-      for (const r of roles) {
-        await tx.userRole.create({ data: { storeId, userId, roleId: r.id } });
-      }
+      await tx.userRole.create({
+        data: {
+          storeId,
+          userId,
+          permissions,
+          permissionSetId
+        }
+      });
     });
 
     return this.listStoreMembers(storeId);
@@ -417,7 +413,6 @@ export class SuperAdminService {
       throw new NotFoundException({ code: 'MEMBERSHIP_NOT_FOUND', message: 'El usuario no pertenece a esta store.' });
     }
 
-    // Delete roles (unlink)
     await this.prisma.userRole.deleteMany({
       where: { storeId, userId },
     });
@@ -429,7 +424,6 @@ export class SuperAdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Usuario no existe.' });
 
-    // Soft delete: deactivate, remove roles and sessions
     await this.prisma.$transaction([
       this.prisma.userRole.deleteMany({ where: { userId } }),
       this.prisma.refreshToken.deleteMany({ where: { userId } }),
@@ -437,10 +431,8 @@ export class SuperAdminService {
         where: { id: userId },
         data: {
           isActive: false,
-          passwordHash: 'DELETED', // Invalidate password
-          resetToken: null,
-          resetTokenExpiresAt: null,
-          isSuperAdmin: false // Remove privilege if any
+          passwordHash: 'DELETED',
+          isSuperAdmin: false
         }
       })
     ]);
@@ -497,9 +489,6 @@ export class SuperAdminService {
 
       await tx.branch.update({ where: { id: branchId }, data });
 
-      // Ensure at least one primary exists if we just turned off primary? 
-      // Simplified: Just update. If no primary, logic might break elsewhere but for now it's fine.
-
       return this.getStore(storeId);
     });
   }
@@ -510,9 +499,6 @@ export class SuperAdminService {
     if (!branch || branch.storeId !== storeId) {
       throw new NotFoundException({ code: 'BRANCH_NOT_FOUND', message: 'Sucursal no existe.' });
     }
-
-    // Prevent deleting the only primary branch maybe?
-    // For now, allow delete.
 
     await this.prisma.branch.delete({ where: { id: branchId } });
     return this.getStore(storeId);

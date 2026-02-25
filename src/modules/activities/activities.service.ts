@@ -3,32 +3,26 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ActivityQueryDto } from './dto/activity-query.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
-import { RoleKey } from '@prisma/client';
+
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  private roleRank(key: RoleKey) {
-    if (key === 'admin') return 3;
-    if (key === 'supervisor') return 2;
-    return 1;
-  }
-
-  private async getHighestRoleInStore(userId: string, storeId: string): Promise<RoleKey> {
-    const rows = await this.prisma.userRole.findMany({
-      where: { userId, storeId },
-      include: { role: { select: { key: true } } },
+  private async getUserPermissions(userId: string, storeId: string): Promise<Set<string>> {
+    const membership = await (this.prisma.userRole as any).findUnique({
+      where: { userId_storeId: { userId, storeId } },
     });
-
-    if (!rows.length) throw new ForbiddenException('STORE_ACCESS_DENIED');
-
-    let best: RoleKey = 'seller';
-    for (const r of rows) {
-      const key = r.role.key;
-      if (this.roleRank(key) > this.roleRank(best)) best = key;
+    const perms = new Set<string>();
+    const pObj = membership?.permissions as Record<string, string[]>;
+    if (pObj) {
+      for (const [mod, acts] of Object.entries(pObj)) {
+        if (Array.isArray(acts)) {
+          for (const act of acts) perms.add(`${mod}:${act}`);
+        }
+      }
     }
-    return best;
+    return perms;
   }
 
   private parseDateOrThrow(value: string) {
@@ -69,8 +63,8 @@ export class ActivitiesService {
     });
     if (!activity) throw new NotFoundException('ACTIVITY_NOT_FOUND');
 
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'admin' || role === 'supervisor') return activity;
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (perms.has('activities:read_all') || perms.has('activities:update_all')) return activity;
 
     // seller: puede leer si la creó o si está ligada a un lead asignado a él
     if (activity.createdByUserId === userId) return activity;
@@ -93,8 +87,8 @@ export class ActivitiesService {
     });
     if (!activity) throw new NotFoundException('ACTIVITY_NOT_FOUND');
 
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'admin' || role === 'supervisor') return activity;
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (perms.has('activities:update_all')) return activity;
 
     // seller: solo si la creó
     if (activity.createdByUserId === userId) return activity;
@@ -103,7 +97,7 @@ export class ActivitiesService {
   }
 
   async list(storeId: string, userId: string, query: ActivityQueryDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -127,8 +121,8 @@ export class ActivitiesService {
       if (query.createdTo) where.createdAt.lte = this.parseDateOrThrow(query.createdTo);
     }
 
-    // seller: solo actividades propias o vinculadas a leads asignados a él
-    if (role === 'seller') {
+    // if not read_all: solo actividades propias o vinculadas a leads asignados a él
+    if (!perms.has('activities:read_all')) {
       where.OR = [
         { createdByUserId: userId },
         { lead: { assignedToUserId: userId } },
@@ -188,14 +182,14 @@ export class ActivitiesService {
   }
 
   async create(storeId: string, userId: string, dto: CreateActivityDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     if (dto.customerId) await this.ensureCustomerInStore(dto.customerId, storeId);
     if (dto.vehicleId) await this.ensureVehicleInStore(dto.vehicleId, storeId);
 
     if (dto.leadId) {
       const lead = await this.ensureLeadInStore(dto.leadId, storeId);
-      if (role === 'seller' && lead.assignedToUserId !== userId) {
+      if (!perms.has('activities:read_all') && lead.assignedToUserId !== userId) {
         throw new ForbiddenException('LEAD_FORBIDDEN');
       }
     }
@@ -224,7 +218,7 @@ export class ActivitiesService {
   }
 
   async update(storeId: string, userId: string, id: string, dto: UpdateActivityDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     await this.assertActivityWritable(storeId, userId, id);
 
@@ -233,7 +227,7 @@ export class ActivitiesService {
 
     if (dto.leadId) {
       const lead = await this.ensureLeadInStore(dto.leadId, storeId);
-      if (role === 'seller' && lead.assignedToUserId !== userId) {
+      if (!perms.has('activities:read_all') && lead.assignedToUserId !== userId) {
         throw new ForbiddenException('LEAD_FORBIDDEN');
       }
     }

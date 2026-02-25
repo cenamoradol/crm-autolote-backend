@@ -103,4 +103,84 @@ export class DashboardService {
             },
         });
     }
+
+    async getTeamKpis(storeId: string, filter: DashboardFilterDto) {
+        const whereDate = {};
+        if (filter.startDate) {
+            const start = new Date(filter.startDate);
+            start.setUTCHours(0, 0, 0, 0);
+            whereDate['gte'] = start;
+        }
+        if (filter.endDate) {
+            const end = new Date(filter.endDate);
+            end.setUTCHours(23, 59, 59, 999);
+            whereDate['lte'] = end;
+        }
+
+        // 1. Get all users in this store
+        const memberships = await (this.prisma.userRole as any).findMany({
+            where: { storeId },
+            select: {
+                userId: true,
+                permissions: true,
+                user: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        // 2. Fetch stats per user
+        const teamStats = await Promise.all(
+            memberships.map(async (m) => {
+                const userId = m.userId;
+
+                const vehiclesCreated = await this.prisma.vehicle.count({
+                    where: {
+                        storeId,
+                        createdByUserId: userId,
+                        createdAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
+                const vehiclesSold = await this.prisma.vehicleSale.count({
+                    where: {
+                        storeId,
+                        soldByUserId: userId,
+                        soldAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
+                const activitiesLogged = await this.prisma.activity.count({
+                    where: {
+                        storeId,
+                        createdByUserId: userId,
+                        createdAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
+                return {
+                    user: {
+                        id: m.user.id,
+                        fullName: m.user.fullName || m.user.email,
+                        email: m.user.email,
+                        permissions: m.permissions,
+                    },
+                    metrics: {
+                        vehiclesCreated,
+                        vehiclesSold,
+                        activitiesLogged,
+                    },
+                };
+            })
+        );
+
+        // Sort by vehicles created explicitly or total activity
+        teamStats.sort((a, b) => b.metrics.vehiclesCreated - a.metrics.vehiclesCreated);
+
+        return teamStats;
+    }
 }

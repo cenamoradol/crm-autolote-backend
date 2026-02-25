@@ -1,0 +1,20 @@
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+Error: Prisma schema validation - (validate wasm)
+Error code: P1012
+[1;91merror[0m: [1mError validating field `store` in model `Role`: The relation field `store` on model `Role` is missing an opposite relation field on the model `Store`. Either run `prisma format` or add it manually.[0m
+  [1;94m-->[0m  [4mprisma\schema.prisma:173[0m
+[1;94m   | [0m
+[1;94m172 | [0m
+[1;94m173 | [0m  [1;91mstore Store @relation(fields: [storeId], references: [id], onDelete: Cascade)[0m
+[1;94m174 | [0m  users UserRole[]
+[1;94m   | [0m
+
+Validation Error Count: 1
+[Context: validate]
+
+Prisma CLI Version : 6.19.1

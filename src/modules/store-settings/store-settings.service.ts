@@ -192,25 +192,22 @@ export class StoreSettingsService {
       };
     }
 
-    const members = await this.prisma.userRole.findMany({
+    const members = await (this.prisma.userRole as any).findMany({
       where,
       include: {
         user: {
           select: { id: true, email: true, fullName: true, isActive: true }
         },
-        role: {
-          select: { id: true, key: true, name: true }
-        }
       },
       take: 20
     });
 
     return {
-      items: members.map(m => ({
+      items: (members as any[]).map(m => ({
         id: m.user.id,
         email: m.user.email,
         fullName: m.user.fullName,
-        role: m.role.name
+        permissions: m.permissions
       }))
     };
   }

@@ -155,16 +155,44 @@ export class AuthService {
     });
     if (!user) return null;
 
-    let roles: string[] = [];
+    let permissions: string[] = [];
+
     if (storeId) {
-      const ur = await this.prisma.userRole.findMany({
+      const memberships = await this.prisma.userRole.findMany({
         where: { userId, storeId },
-        include: { role: true },
+        include: { permissionSet: true }
       });
-      roles = ur.map((r) => r.role.key);
+
+      const permSet = new Set<string>();
+      for (const ur of memberships) {
+        // 1. Direct permissions (overrides)
+        if (ur.permissions) {
+          const rolePerms = ur.permissions as Record<string, string[]>;
+          for (const [module, actions] of Object.entries(rolePerms)) {
+            if (Array.isArray(actions)) {
+              for (const action of actions) {
+                permSet.add(`${module}:${action}`);
+              }
+            }
+          }
+        }
+
+        // 2. Permission Set permissions
+        if ((ur as any).permissionSet?.permissions) {
+          const setPerms = (ur as any).permissionSet.permissions as Record<string, string[]>;
+          for (const [module, actions] of Object.entries(setPerms)) {
+            if (Array.isArray(actions)) {
+              for (const action of actions) {
+                permSet.add(`${module}:${action}`);
+              }
+            }
+          }
+        }
+      }
+      permissions = Array.from(permSet);
     }
 
-    return { ...user, roles };
+    return { ...user, permissions };
   }
 
   async forgotPassword(email: string, req?: any) {

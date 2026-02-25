@@ -5,32 +5,26 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { UpsertLeadPreferenceDto } from './dto/upsert-lead-preference.dto';
 import { UpdateLeadPreferenceDto } from './dto/update-lead-preference.dto';
-import { LeadStatus, RoleKey } from '@prisma/client';
+import { LeadStatus } from '@prisma/client';
 
 @Injectable()
 export class LeadsService {
   constructor(private readonly prisma: PrismaService) { }
 
-  private roleRank(key: RoleKey) {
-    if (key === 'admin') return 3;
-    if (key === 'supervisor') return 2;
-    return 1;
-  }
-
-  private async getHighestRoleInStore(userId: string, storeId: string): Promise<RoleKey> {
-    const rows = await this.prisma.userRole.findMany({
-      where: { userId, storeId },
-      include: { role: { select: { key: true } } },
+  private async getUserPermissions(userId: string, storeId: string): Promise<Set<string>> {
+    const membership = await (this.prisma.userRole as any).findUnique({
+      where: { userId_storeId: { userId, storeId } },
     });
-
-    if (!rows.length) throw new ForbiddenException('STORE_ACCESS_DENIED');
-
-    let best: RoleKey = 'seller';
-    for (const r of rows) {
-      const key = r.role.key;
-      if (this.roleRank(key) > this.roleRank(best)) best = key;
+    const perms = new Set<string>();
+    const pObj = membership?.permissions as Record<string, string[]>;
+    if (pObj) {
+      for (const [mod, acts] of Object.entries(pObj)) {
+        if (Array.isArray(acts)) {
+          for (const act of acts) perms.add(`${mod}:${act}`);
+        }
+      }
     }
-    return best;
+    return perms;
   }
 
   private async ensureCustomerInStore(storeId: string, customerId: string) {
@@ -43,7 +37,7 @@ export class LeadsService {
 
   private async ensureSellerInStore(storeId: string, userId: string) {
     const row = await this.prisma.userRole.findFirst({
-      where: { userId, storeId, role: { key: 'seller' } },
+      where: { userId, storeId },
       select: { id: true },
     });
     if (!row) throw new ForbiddenException('ASSIGNEE_NOT_SELLER_IN_STORE');
@@ -56,8 +50,8 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException('LEAD_NOT_FOUND');
 
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'admin' || role === 'supervisor') return lead;
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (perms.has('leads:read_all') || perms.has('leads:update_all')) return lead;
 
     // seller: solo asignados a él
     if (lead.assignedToUserId === userId) return lead;
@@ -70,7 +64,7 @@ export class LeadsService {
   }
 
   async list(storeId: string, userId: string, query: LeadQueryDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -99,7 +93,7 @@ export class LeadsService {
     }
 
     // seller: fuerza solo sus leads
-    if (role === 'seller') where.assignedToUserId = userId;
+    if (!perms.has('leads:read_all')) where.assignedToUserId = userId;
 
     const orderBy: any = { [query.sortBy ?? 'createdAt']: query.sortDir ?? 'desc' };
 
@@ -141,15 +135,15 @@ export class LeadsService {
   }
 
   async create(storeId: string, userId: string, dto: CreateLeadDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     let assignedToUserId = dto.assignedToUserId ?? null;
 
     // seller: si no mandan asignación, se asigna a sí mismo
-    if (role === 'seller' && !assignedToUserId) assignedToUserId = userId;
+    if (!perms.has('leads:read_all') && !assignedToUserId) assignedToUserId = userId;
 
     // seller: no puede asignar a otros
-    if (role === 'seller' && assignedToUserId && assignedToUserId !== userId) {
+    if (!perms.has('leads:read_all') && assignedToUserId && assignedToUserId !== userId) {
       throw new ForbiddenException('SELLER_CANNOT_ASSIGN_OTHERS');
     }
 
@@ -190,7 +184,7 @@ export class LeadsService {
   }
 
   async update(storeId: string, userId: string, id: string, dto: UpdateLeadDto) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
+    const perms = await this.getUserPermissions(userId, storeId);
 
     const lead = await this.prisma.lead.findFirst({
       where: { id, storeId },
@@ -198,14 +192,14 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException('LEAD_NOT_FOUND');
 
-    if (role === 'seller') {
+    if (!perms.has('leads:read_all') && !perms.has('leads:update_all')) {
       if (lead.assignedToUserId !== userId) throw new ForbiddenException('LEAD_FORBIDDEN');
       if (dto.assignedToUserId && dto.assignedToUserId !== userId) {
         throw new ForbiddenException('SELLER_CANNOT_REASSIGN');
       }
     }
 
-    if ((role === 'admin' || role === 'supervisor') && dto.assignedToUserId) {
+    if ((perms.has('leads:read_all') || perms.has('leads:update_all')) && dto.assignedToUserId) {
       await this.ensureSellerInStore(storeId, dto.assignedToUserId);
     }
 
@@ -244,8 +238,8 @@ export class LeadsService {
   }
 
   async remove(storeId: string, userId: string, id: string) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'seller') throw new ForbiddenException('SELLER_CANNOT_DELETE');
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (!perms.has('leads:delete_all')) throw new ForbiddenException('SELLER_CANNOT_DELETE');
 
     const lead = await this.prisma.lead.findFirst({ where: { id, storeId }, select: { id: true, fullName: true } });
     if (!lead) throw new NotFoundException('LEAD_NOT_FOUND');
@@ -265,8 +259,8 @@ export class LeadsService {
   }
 
   async assign(storeId: string, userId: string, leadId: string, assignedToUserId: string) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'seller') throw new ForbiddenException('SELLER_CANNOT_ASSIGN');
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (!perms.has('leads:assign_all') && !perms.has('leads:update_all')) throw new ForbiddenException('SELLER_CANNOT_ASSIGN');
 
     await this.assertLeadWritable(storeId, userId, leadId);
     const assignee = await this.prisma.userRole.findFirst({ where: { userId: assignedToUserId, storeId }, include: { user: true } });
@@ -382,8 +376,8 @@ export class LeadsService {
   }
 
   async deletePreference(storeId: string, userId: string, leadId: string) {
-    const role = await this.getHighestRoleInStore(userId, storeId);
-    if (role === 'seller') throw new ForbiddenException('SELLER_CANNOT_DELETE_PREFERENCE');
+    const perms = await this.getUserPermissions(userId, storeId);
+    if (!perms.has('leads:delete_all')) throw new ForbiddenException('SELLER_CANNOT_DELETE_PREFERENCE');
 
     await this.assertLeadWritable(storeId, userId, leadId);
 

@@ -10,7 +10,8 @@
     "build": "nest build",
     "start": "node dist/src/main.js",
     "start:worker:dev": "nest start --watch --entryFile main.worker",
-    "start:worker": "node dist/main.worker.js"
+    "start:worker": "node dist/main.worker.js",
+    "db:init": "ts-node --transpile-only prisma/init-db.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",

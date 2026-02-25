@@ -4,24 +4,6 @@ import { nanoid } from 'nanoid';
 
 const prisma = new PrismaClient();
 
-async function seedRoles() {
-  await prisma.role.upsert({
-    where: { key: 'admin' },
-    update: {},
-    create: { key: 'admin', name: 'Admin' },
-  });
-  await prisma.role.upsert({
-    where: { key: 'supervisor' },
-    update: {},
-    create: { key: 'supervisor', name: 'Supervisor' },
-  });
-  await prisma.role.upsert({
-    where: { key: 'seller' },
-    update: {},
-    create: { key: 'seller', name: 'Seller' },
-  });
-}
-
 async function seedPlan() {
   return prisma.plan.upsert({
     where: { code: 'basic' },
@@ -114,11 +96,7 @@ function normalizeDomain(domain: string): string {
 async function main() {
   console.log('🌱 Seeding...');
 
-  await seedRoles();
   const plan = await seedPlan();
-
-  const roles = await prisma.role.findMany();
-  const roleByKey = new Map(roles.map((r) => [r.key, r]));
 
   const { superAdmin, admin, supervisor, seller } = await seedUsers();
   const { toyota, honda, corolla, rav4, civic } = await seedBrandsModels();
@@ -159,22 +137,60 @@ async function main() {
       },
     }));
 
-  async function ensureMembership(userId: string, roleKey: 'admin' | 'supervisor' | 'seller') {
-    const role = roleByKey.get(roleKey);
-    if (!role) throw new Error(`Role ${roleKey} no existe.`);
+  const defaultPermissions = {
+    admin: {
+      inventory: ['read', 'create', 'update', 'delete'],
+      sales: ['read', 'create', 'update', 'delete'],
+      customers: ['read', 'create', 'update', 'delete'],
+      leads: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all', 'assign_all'],
+      activities: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all'],
+      consignors: ['read', 'create', 'update', 'delete'],
+      dashboard: ['read', 'read_team'],
+      reports: ['read'],
+      store_settings: ['read', 'update'],
+      billing: ['read', 'update'],
+      preferences: ['read', 'update'],
+    },
+    supervisor: {
+      inventory: ['read', 'create', 'update', 'delete'],
+      sales: ['read'],
+      customers: ['read', 'create', 'update', 'delete'],
+      leads: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all', 'assign_all'],
+      activities: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all'],
+      consignors: ['read', 'create', 'update', 'delete'],
+      dashboard: ['read', 'read_team'],
+      reports: ['read'],
+      store_settings: ['read', 'update'],
+      billing: ['read', 'update'],
+      preferences: ['read', 'update'],
+    },
+    seller: {
+      inventory: ['read'],
+      sales: ['read', 'create'],
+      customers: ['read', 'create', 'update'],
+      leads: ['read', 'create', 'update'],
+      activities: ['read', 'create', 'update'],
+      consignors: ['read'],
+      dashboard: [],
+      reports: [],
+      store_settings: [],
+      billing: [],
+      preferences: ['read', 'update'],
+    }
+  };
 
-    // upsert requiere un unique: ya tenemos @@unique([userId, storeId, roleId])
-    await prisma.userRole.upsert({
-      where: { userId_storeId_roleId: { userId, storeId: store.id, roleId: role.id } },
-      update: {},
-      create: { userId, storeId: store.id, roleId: role.id },
+  async function ensureMembership(userId: string, perms: any) {
+    await (prisma.userRole as any).upsert({
+      where: { userId_storeId: { userId, storeId: store.id } },
+      update: { permissions: perms },
+      create: { userId, storeId: store.id, permissions: perms },
     });
   }
 
-  await ensureMembership(superAdmin.id, 'admin');
-  await ensureMembership(admin.id, 'admin');
-  await ensureMembership(supervisor.id, 'supervisor');
-  await ensureMembership(seller.id, 'seller');
+  await ensureMembership(superAdmin.id, defaultPermissions.admin);
+  await ensureMembership(admin.id, defaultPermissions.admin);
+  await ensureMembership(supervisor.id, defaultPermissions.supervisor);
+  await ensureMembership(seller.id, defaultPermissions.seller);
 
   // Suscripción demo: NO duplicar si ya hay una ACTIVE vigente
   const now = new Date();

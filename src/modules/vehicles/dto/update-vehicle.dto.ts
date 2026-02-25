@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, MinLength, IsUUID } from 'class-validator';
 
 export class UpdateVehicleDto {
   @IsOptional()
@@ -63,4 +63,8 @@ export class UpdateVehicleDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+
+  @IsOptional()
+  @IsUUID(4)
+  consignorId?: string;
 }

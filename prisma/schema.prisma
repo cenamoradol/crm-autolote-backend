@@ -54,11 +54,7 @@ enum ActivityType {
   SYSTEM
 }
 
-enum RoleKey {
-  admin
-  supervisor
-  seller
-}
+
 
 model Store {
   id          String   @id @default(uuid()) @db.Uuid
@@ -86,6 +82,8 @@ model Store {
   leadPreferences     LeadPreference[]
 
   auditLogs    AuditLog[]
+  consignors   Consignor[]
+  permissionSets PermissionSet[]
 
   @@index([createdAt])
 }
@@ -143,7 +141,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  roles         UserRole[]
+  memberships   UserRole[]
   refreshTokens RefreshToken[]
   resetToken          String?   @map("reset_token")
   resetTokenExpiresAt DateTime? @map("reset_token_expires_at")
@@ -163,27 +161,19 @@ model User {
   @@index([createdAt])
 }
 
-model Role {
-  id   String  @id @default(uuid()) @db.Uuid
-  key  RoleKey @unique
-  name String
-
-  users UserRole[]
-}
-
 model UserRole {
   id      String @id @default(uuid()) @db.Uuid
   userId  String @db.Uuid
   storeId String @db.Uuid
-  roleId  String @db.Uuid
+  permissions Json?
+  permissionSetId String? @db.Uuid @map("permission_set_id")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  role  Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionSet PermissionSet? @relation(fields: [permissionSetId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, storeId, roleId])
+  @@unique([userId, storeId])
   @@index([storeId, userId])
-  @@index([storeId, roleId])
 }
 
 model RefreshToken {
@@ -255,6 +245,7 @@ model Vehicle {
   soldAt      DateTime? @map("sold_at")
   soldPrice   Decimal?  @db.Decimal(12, 2) @map("sold_price")
 
+  consignorId     String? @db.Uuid @map("consignor_id")
   createdByUserId String? @db.Uuid @map("created_by_user_id")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -265,6 +256,7 @@ model Vehicle {
   model   Model  @relation(fields: [modelId], references: [id], onDelete: Restrict)
   vehicleType VehicleType? @relation(fields: [vehicleTypeId], references: [id], onDelete: SetNull)
 
+  consignor Consignor? @relation(fields: [consignorId], references: [id], onDelete: SetNull)
   createdBy User? @relation("VehicleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   media         VehicleMedia[]
@@ -573,4 +565,36 @@ model AuditLog {
   @@index([storeId])
   @@index([storeId, createdAt])
   @@index([actorUserId])
+}
+
+model Consignor {
+  id        String   @id @default(uuid()) @db.Uuid
+  storeId   String   @db.Uuid
+  fullName  String   @map("full_name")
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  vehicles  Vehicle[]
+
+  @@index([storeId])
+  @@index([storeId, createdAt])
+}
+
+model PermissionSet {
+  id          String   @id @default(uuid()) @db.Uuid
+  storeId     String   @db.Uuid
+  name        String
+  permissions Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  memberships UserRole[]
+
+  @@unique([storeId, name])
+  @@index([storeId])
 }
