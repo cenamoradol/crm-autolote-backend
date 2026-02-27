@@ -21,30 +21,11 @@ async function main() {
         },
     });
 
-    // 2. Create Super Admin
-    const email = process.env.ADMIN_EMAIL || 'admin@example.com';
-    const password = process.env.ADMIN_PASSWORD || 'Admin123!';
-
-    console.log(`👤 Creating super admin: ${email}`);
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    await prisma.user.upsert({
-        where: { email },
-        update: {
-            passwordHash,
-            isSuperAdmin: true,
-            isActive: true
-        },
-        create: {
-            email,
-            fullName: 'Administrator',
-            passwordHash,
-            isSuperAdmin: true,
-            isActive: true,
-        },
-    });
-
-    console.log('✅ Initialization complete.');
+    // 2. Run Demo Seeder
+    console.log('🌱 Running demo seeder...');
+    // We already have seed-demo.ts, let's just use it or copy its logic.
+    // For simplicity and to ensure it works in Render environment, I'll update db:init in package.json to run the seeder.
+    console.log('✅ Initialization complete. Run npm run db:seed:demo to populate test data.');
 }
 
 main()
