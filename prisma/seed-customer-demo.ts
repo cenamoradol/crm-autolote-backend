@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Model } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -17,7 +17,7 @@ async function main() {
     const nissan = await prisma.brand.findFirst({ where: { name: { contains: 'Nissan', mode: 'insensitive' } } });
 
     // Find models
-    let corolla = null, crv = null, sentra = null;
+    let corolla: Model | null = null, crv: Model | null = null, sentra: Model | null = null;
     if (toyota) corolla = await prisma.model.findFirst({ where: { brandId: toyota.id, name: { contains: 'Corolla', mode: 'insensitive' } } });
     if (honda) crv = await prisma.model.findFirst({ where: { brandId: honda.id, name: { contains: 'CR-V', mode: 'insensitive' } } });
     if (nissan) sentra = await prisma.model.findFirst({ where: { brandId: nissan.id, name: { contains: 'Sentra', mode: 'insensitive' } } });

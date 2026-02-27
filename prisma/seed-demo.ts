@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, VehicleStatus, ActivityType, CustomerStatus, Brand, Model } from '@prisma/client';
+import { PrismaClient, Prisma, VehicleStatus, ActivityType, CustomerStatus, Brand, Model, VehicleType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -107,7 +107,7 @@ async function main() {
     // 7. Vehicle Types
     console.log('🚗 Creating Vehicle Types...');
     const typesData = ['Turismo', 'SUV', 'Pickup', 'Camioneta', 'Hatchback', 'Camión'];
-    const vehicleTypes = [];
+    const vehicleTypes: VehicleType[] = [];
     for (const name of typesData) {
         const vt = await prisma.vehicleType.upsert({
             where: { name },

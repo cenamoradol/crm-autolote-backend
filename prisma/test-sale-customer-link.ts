@@ -19,23 +19,26 @@ async function main() {
     console.log(`👤 Cliente actual: ${customer.fullName} | Estado: ${customer.status}`);
 
     // 3. Crear un vehículo temporal para venderle
+    const branch = await prisma.branch.findFirst({ where: { storeId: store.id } });
     const brand = await prisma.brand.findFirst();
     const model = await prisma.model.findFirst({ where: { brandId: brand?.id } });
+
+    if (!branch || !brand || !model) throw new Error('Faltan datos de sucursal, marca o modelo.');
 
     const vehicle = await prisma.vehicle.create({
         data: {
             storeId: store.id,
+            branchId: branch.id,
             publicId: `TEST-V-${Date.now().toString().slice(-4)}`,
-            brandId: brand!.id,
-            modelId: model!.id,
+            brandId: brand.id,
+            modelId: model.id,
             year: 2020,
             price: 15000,
             mileage: 50000,
             status: 'AVAILABLE',
-            engine: '2.0L',
-            transmission: 'AUTOMATIC',
-            fuelType: 'GASOLINE',
-            type: 'SEDAN',
+            engineSize: 2.0,
+            transmission: 'Automática',
+            fuelType: 'Gasolina',
             color: 'Blanco',
         }
     });
