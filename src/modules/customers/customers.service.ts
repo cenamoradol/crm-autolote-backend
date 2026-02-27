@@ -45,6 +45,7 @@ export class CustomersService {
           email: true,
           phone: true,
           documentId: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -70,8 +71,62 @@ export class CustomersService {
         email: true,
         phone: true,
         documentId: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
+        preferences: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            brandId: true,
+            modelId: true,
+            yearFrom: true,
+            yearTo: true,
+            minPrice: true,
+            maxPrice: true,
+            isActive: true,
+            notes: true,
+            createdAt: true,
+            brand: { select: { id: true, name: true } },
+            model: { select: { id: true, name: true } },
+          },
+        },
+        activities: {
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+          select: {
+            id: true,
+            type: true,
+            notes: true,
+            createdAt: true,
+            createdBy: { select: { id: true, fullName: true } },
+          },
+        },
+        sales: {
+          orderBy: { soldAt: 'desc' },
+          select: {
+            id: true,
+            soldAt: true,
+            soldPrice: true,
+            notes: true,
+            vehicle: {
+              select: {
+                id: true,
+                publicId: true,
+                year: true,
+                price: true,
+                brand: { select: { id: true, name: true } },
+                model: { select: { id: true, name: true } },
+                media: {
+                  take: 1,
+                  orderBy: { position: 'asc' },
+                  select: { url: true },
+                },
+              },
+            },
+            soldBy: { select: { id: true, fullName: true } },
+          },
+        },
       },
     });
 
@@ -226,5 +281,171 @@ export class CustomersService {
     });
 
     return { ok: true };
+  }
+
+  // ── Preferences ──
+
+  async addPreference(
+    storeId: string,
+    customerId: string,
+    dto: { brandId?: string; modelId?: string; yearFrom?: number; yearTo?: number; minPrice?: number; maxPrice?: number; notes?: string },
+  ) {
+    const customer = await this.prisma.customer.findFirst({ where: { id: customerId, storeId }, select: { id: true } });
+    if (!customer) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Customer no existe.' });
+
+    return this.prisma.customerPreference.create({
+      data: {
+        storeId,
+        customerId,
+        brandId: dto.brandId || null,
+        modelId: dto.modelId || null,
+        yearFrom: dto.yearFrom || null,
+        yearTo: dto.yearTo || null,
+        minPrice: dto.minPrice || null,
+        maxPrice: dto.maxPrice || null,
+        notes: dto.notes || null,
+      },
+      select: {
+        id: true,
+        brandId: true,
+        modelId: true,
+        yearFrom: true,
+        yearTo: true,
+        minPrice: true,
+        maxPrice: true,
+        isActive: true,
+        notes: true,
+        createdAt: true,
+        brand: { select: { id: true, name: true } },
+        model: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async removePreference(storeId: string, customerId: string, prefId: string) {
+    const pref = await this.prisma.customerPreference.findFirst({ where: { id: prefId, customerId, storeId } });
+    if (!pref) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Preferencia no existe.' });
+
+    await this.prisma.customerPreference.delete({ where: { id: prefId } });
+    return { ok: true };
+  }
+
+  async togglePreference(storeId: string, customerId: string, prefId: string) {
+    const pref = await this.prisma.customerPreference.findFirst({
+      where: { id: prefId, customerId, storeId },
+      select: { id: true, isActive: true },
+    });
+    if (!pref) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Preferencia no existe.' });
+
+    return this.prisma.customerPreference.update({
+      where: { id: prefId },
+      data: { isActive: !pref.isActive },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
+  }
+
+  // ── Activities ──
+
+  async addActivity(
+    storeId: string,
+    userId: string,
+    customerId: string,
+    dto: { type: string; notes?: string },
+  ) {
+    const customer = await this.prisma.customer.findFirst({ where: { id: customerId, storeId }, select: { id: true } });
+    if (!customer) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Customer no existe.' });
+
+    return this.prisma.activity.create({
+      data: {
+        storeId,
+        type: dto.type as any,
+        notes: dto.notes || null,
+        customerId,
+        createdByUserId: userId,
+      } as any,
+      select: {
+        id: true,
+        type: true,
+        notes: true,
+        createdAt: true,
+        createdBy: { select: { id: true, fullName: true } },
+      },
+    });
+  }
+
+  // ── Status ──
+
+  async updateStatus(storeId: string, customerId: string, status: string) {
+    const customer = await this.prisma.customer.findFirst({ where: { id: customerId, storeId }, select: { id: true } });
+    if (!customer) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Customer no existe.' });
+
+    return this.prisma.customer.update({
+      where: { id: customerId },
+      data: { status: status as any },
+      select: { id: true, status: true },
+    });
+  }
+
+  // ── Matching Vehicles ──
+
+  async getMatchingVehicles(storeId: string, customerId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, storeId },
+      select: {
+        preferences: {
+          where: { isActive: true },
+          select: { brandId: true, modelId: true, yearFrom: true, yearTo: true, minPrice: true, maxPrice: true },
+        },
+      },
+    });
+    if (!customer) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Customer no existe.' });
+    if (!customer.preferences.length) return [];
+
+    // Build OR conditions from all active preferences
+    const orConditions = customer.preferences.map((p: any) => {
+      const cond: any = {};
+      if (p.brandId) cond.brandId = p.brandId;
+      if (p.modelId) cond.modelId = p.modelId;
+      if (p.yearFrom || p.yearTo) {
+        cond.year = {};
+        if (p.yearFrom) cond.year.gte = p.yearFrom;
+        if (p.yearTo) cond.year.lte = p.yearTo;
+      }
+      if (p.minPrice || p.maxPrice) {
+        cond.price = {};
+        if (p.minPrice) cond.price.gte = p.minPrice;
+        if (p.maxPrice) cond.price.lte = p.maxPrice;
+      }
+      return cond;
+    });
+
+    return this.prisma.vehicle.findMany({
+      where: {
+        storeId,
+        status: 'AVAILABLE',
+        OR: orConditions,
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        publicId: true,
+        status: true,
+        year: true,
+        price: true,
+        mileage: true,
+        createdAt: true,
+        brand: { select: { id: true, name: true } },
+        model: { select: { id: true, name: true } },
+        media: {
+          take: 1,
+          orderBy: { position: 'asc' },
+          select: { url: true },
+        },
+      },
+    });
   }
 }

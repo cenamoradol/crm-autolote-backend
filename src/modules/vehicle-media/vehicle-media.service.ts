@@ -12,21 +12,37 @@ export class VehicleMediaService {
     private readonly r2: R2Service,
   ) { }
 
-  private async verifyUserInStore(userId: string, storeId: string): Promise<void> {
-    const membership = await this.prisma.userRole.findFirst({
-      where: { userId, storeId },
-      select: { id: true },
-    });
-
-    if (!membership) throw new ForbiddenException('STORE_ACCESS_DENIED');
-  }
-
   private async ensureVehicleInStore(storeId: string, vehicleId: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, storeId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!v) throw new ForbiddenException('VEHICLE_NOT_IN_STORE');
+    return v;
+  }
+
+  private async canModifyVehicle(storeId: string, vehicleId: string, userId: string): Promise<void> {
+    const v = await this.ensureVehicleInStore(storeId, vehicleId);
+    if (v.status !== 'SOLD') return;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isSuperAdmin: true },
+    });
+    if (user?.isSuperAdmin) return;
+
+    const memberships = await this.prisma.userRole.findMany({
+      where: { userId, storeId },
+    });
+
+    for (const ur of memberships) {
+      if (ur.permissions) {
+        const perms = ur.permissions as Record<string, string[]>;
+        if (perms.sales?.includes('override_closed')) return;
+      }
+    }
+
+    throw new ForbiddenException('VEHICLE_SOLD_LOCKED');
   }
 
   private normalizeKind(kind?: string, mimetype?: string): MediaKind {
@@ -48,9 +64,9 @@ export class VehicleMediaService {
     return sharp(input).rotate().webp({ quality: 82 }).toBuffer();
   }
 
-  async list(storeId: string, userId: string, vehicleId: string) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+  async list(_storeId: string, _userId: string, vehicleId: string) {
+    // await this.verifyUserInStore(userId, storeId); // Removed redundancy
+    // await this.ensureVehicleInStore(storeId, vehicleId); 
 
     const data = await this.prisma.vehicleMedia.findMany({
       where: { vehicleId },
@@ -62,13 +78,12 @@ export class VehicleMediaService {
 
   async uploadAndRegister(
     storeId: string,
-    userId: string,
+    _userId: string,
     vehicleId: string,
     file: Express.Multer.File,
     dto: { kind?: string; isCover?: boolean; position?: number },
   ) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+    await this.canModifyVehicle(storeId, vehicleId, _userId);
 
     if (!file || !file.buffer?.length) throw new ForbiddenException('FILE_REQUIRED');
 
@@ -139,8 +154,7 @@ export class VehicleMediaService {
     files: Express.Multer.File[],
     dto: { isCoverFirst?: boolean; startPosition?: number },
   ) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+    await this.canModifyVehicle(storeId, vehicleId, userId);
 
     if (!files?.length) throw new ForbiddenException('FILES_REQUIRED');
 
@@ -224,9 +238,8 @@ export class VehicleMediaService {
     }
   }
 
-  async setCover(storeId: string, userId: string, vehicleId: string, mediaId: string) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+  async setCover(storeId: string, _userId: string, vehicleId: string, mediaId: string) {
+    await this.canModifyVehicle(storeId, vehicleId, _userId);
 
     const media = await this.prisma.vehicleMedia.findFirst({
       where: { id: mediaId, vehicleId },
@@ -247,9 +260,8 @@ export class VehicleMediaService {
     });
   }
 
-  async reorder(storeId: string, userId: string, vehicleId: string, orderedIds: string[]) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+  async reorder(storeId: string, _userId: string, vehicleId: string, orderedIds: string[]) {
+    await this.canModifyVehicle(storeId, vehicleId, _userId);
 
     const count = await this.prisma.vehicleMedia.count({
       where: { vehicleId, id: { in: orderedIds } },
@@ -273,9 +285,8 @@ export class VehicleMediaService {
     return { ok: true, data };
   }
 
-  async remove(storeId: string, userId: string, vehicleId: string, mediaId: string, deleteFile: boolean) {
-    await this.verifyUserInStore(userId, storeId);
-    await this.ensureVehicleInStore(storeId, vehicleId);
+  async remove(storeId: string, _userId: string, vehicleId: string, mediaId: string, deleteFile: boolean) {
+    await this.canModifyVehicle(storeId, vehicleId, _userId);
 
     const media = await this.prisma.vehicleMedia.findFirst({
       where: { id: mediaId, vehicleId },

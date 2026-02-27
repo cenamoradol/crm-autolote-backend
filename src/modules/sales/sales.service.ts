@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { R2Service } from '../../common/r2/r2.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly r2: R2Service,
+  ) { }
 
   async list(storeId: string, q: { soldByUserId?: string }) {
     return this.prisma.vehicleSale.findMany({
@@ -13,12 +18,47 @@ export class SalesService {
         ...(q.soldByUserId ? { soldByUserId: q.soldByUserId } : {}),
       },
       include: {
-        vehicle: { include: { brand: true, model: true, branch: true } },
+        vehicle: { include: { brand: true, model: true, branch: true, media: { take: 1, where: { isCover: true } } } },
         customer: true,
         lead: true,
         soldBy: { select: { id: true, email: true, fullName: true } },
+        documents: true,
       },
       orderBy: { soldAt: 'desc' },
+    });
+  }
+
+  private async canModifySale(storeId: string, saleId: string, userId: string): Promise<boolean> {
+    const sale = await this.prisma.vehicleSale.findFirst({
+      where: { id: saleId, storeId },
+      select: { status: true } as any,
+    });
+    if (!sale) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Venta no encontrada.' });
+
+    if ((sale as any).status !== 'COMPLETED') return true;
+    // En realidad, si está COMPLETED es cuando queremos el lock.
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isSuperAdmin: true },
+    });
+    if (user?.isSuperAdmin) return true;
+
+    const memberships = await this.prisma.userRole.findMany({
+      where: { userId, storeId },
+    });
+
+    const overridePerm = 'sales:override_closed';
+    for (const ur of memberships) {
+      if (ur.permissions) {
+        const perms = ur.permissions as Record<string, string[]>;
+        if (perms.sales?.includes('override_closed')) return true;
+      }
+    }
+
+    throw new BadRequestException({
+      code: 'SALE_LOCKED',
+      message: 'Esta venta está cerrada y no se puede modificar sin permisos especiales.',
     });
   }
 
@@ -61,7 +101,6 @@ export class SalesService {
         where: { id: dto.vehicleId },
         data: {
           status: 'SOLD',
-          isPublished: false,
           soldAt: now,
           soldPrice: dto.soldPrice ? new Prisma.Decimal(dto.soldPrice) : undefined,
         },
@@ -80,6 +119,23 @@ export class SalesService {
       return created;
     });
 
+    // Auto-update customer status to PURCHASED
+    if (dto.customerId) {
+      await this.prisma.customer.update({
+        where: { id: dto.customerId },
+        data: { status: 'PURCHASED' as any },
+      });
+      await this.prisma.activity.create({
+        data: {
+          storeId,
+          type: 'SYSTEM' as any,
+          notes: `Cliente marcado como COMPRÓ — Venta de vehículo ${vehicle.publicId || dto.vehicleId}`,
+          customerId: dto.customerId,
+          createdByUserId: currentUserId,
+        } as any,
+      });
+    }
+
     return this.prisma.vehicleSale.findFirst({
       where: { id: sale.id, storeId },
       include: {
@@ -87,11 +143,14 @@ export class SalesService {
         customer: true,
         lead: true,
         soldBy: { select: { id: true, email: true, fullName: true } },
+        documents: true,
       },
     });
   }
 
-  async update(storeId: string, id: string, dto: any) {
+  async update(storeId: string, id: string, userId: string, dto: any) {
+    await this.canModifySale(storeId, id, userId);
+
     const sale = await this.prisma.vehicleSale.findFirst({
       where: { id, storeId },
     });
@@ -108,7 +167,7 @@ export class SalesService {
     // Remove undefined
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
 
-    return this.prisma.vehicleSale.update({
+    const updatedSale = await this.prisma.vehicleSale.update({
       where: { id },
       data,
       include: {
@@ -116,6 +175,75 @@ export class SalesService {
         customer: true,
         lead: true,
         soldBy: { select: { id: true, email: true, fullName: true } },
+        documents: true,
+      },
+    });
+
+    // Auto-update customer status to PURCHASED if customerId is added during update
+    if (dto.customerId && dto.customerId !== sale.customerId) {
+      await this.prisma.customer.update({
+        where: { id: dto.customerId },
+        data: { status: 'PURCHASED' as any },
+      });
+      await this.prisma.activity.create({
+        data: {
+          storeId,
+          type: 'SYSTEM' as any,
+          notes: `Cliente vinculado a venta y marcado como COMPRÓ — Venta de vehículo ${sale.vehicleId}`,
+          customerId: dto.customerId,
+          createdByUserId: userId,
+        } as any,
+      });
+    }
+
+    return updatedSale;
+  }
+
+  async addDocument(storeId: string, saleId: string, userId: string, dto: { name: string; fileKey: string; url: string }) {
+    await this.canModifySale(storeId, saleId, userId);
+    const sale = await this.prisma.vehicleSale.findFirst({ where: { id: saleId, storeId } });
+    if (!sale) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Venta no encontrada.' });
+
+    return this.prisma.saleDocument.create({
+      data: {
+        saleId,
+        name: dto.name,
+        fileKey: dto.fileKey,
+        url: dto.url,
+      },
+    });
+  }
+
+  async removeDocument(storeId: string, saleId: string, userId: string, docId: string) {
+    await this.canModifySale(storeId, saleId, userId);
+    const doc = await this.prisma.saleDocument.findFirst({
+      where: { id: docId, saleId, sale: { storeId } },
+    });
+    if (!doc) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Documento no encontrado.' });
+
+    return this.prisma.saleDocument.delete({ where: { id: docId } });
+  }
+
+  async uploadDocument(storeId: string, saleId: string, userId: string, file: Express.Multer.File) {
+    await this.canModifySale(storeId, saleId, userId);
+    const sale = await this.prisma.vehicleSale.findFirst({ where: { id: saleId, storeId } });
+    if (!sale) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Venta no encontrada.' });
+
+    if (!file || !file.buffer) throw new BadRequestException({ code: 'FILE_REQUIRED', message: 'Archivo requerido.' });
+
+    const id = randomUUID();
+    const ext = file.originalname.split('.').pop() || 'bin';
+    const fileKey = `stores/${storeId}/sales/${saleId}/documents/${id}.${ext}`;
+
+    await this.r2.uploadObject(fileKey, file.buffer, file.mimetype);
+    const url = this.r2.buildPublicUrl(fileKey);
+
+    return this.prisma.saleDocument.create({
+      data: {
+        saleId,
+        name: file.originalname,
+        fileKey,
+        url,
       },
     });
   }

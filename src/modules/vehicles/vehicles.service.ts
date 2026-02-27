@@ -9,6 +9,38 @@ const genPublicId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh
 export class VehiclesService {
   constructor(private readonly prisma: PrismaService) { }
 
+  private async canModifyVehicle(storeId: string, vehicleId: string, userId: string): Promise<boolean> {
+    const v = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, storeId },
+      select: { status: true },
+    });
+    if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
+
+    if (v.status !== 'SOLD') return true;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isSuperAdmin: true },
+    });
+    if (user?.isSuperAdmin) return true;
+
+    const memberships = await this.prisma.userRole.findMany({
+      where: { userId, storeId },
+    });
+
+    for (const ur of memberships) {
+      if (ur.permissions) {
+        const perms = ur.permissions as Record<string, string[]>;
+        if (perms.sales?.includes('override_closed')) return true;
+      }
+    }
+
+    throw new BadRequestException({
+      code: 'VEHICLE_SOLD',
+      message: 'Este vehículo ya está vendido y no se puede modificar por seguridad.',
+    });
+  }
+
   async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string }) {
     const where: Prisma.VehicleWhereInput = { storeId, status: { not: 'ARCHIVED' } };
 
@@ -64,6 +96,8 @@ export class VehiclesService {
         fuelType: dto.fuelType,
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : undefined,
+        offerPrice: dto.offerPrice ? new Prisma.Decimal(dto.offerPrice) : undefined,
+        plate: dto.plate,
         isPublished: dto.isPublished ?? false,
         consignorId: dto.consignorId,
         createdByUserId: userId,
@@ -85,6 +119,7 @@ export class VehiclesService {
   }
 
   async update(storeId: string, userId: string, id: string, dto: any) {
+    await this.canModifyVehicle(storeId, id, userId);
     const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true } });
     if (!current) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
 
@@ -110,6 +145,8 @@ export class VehiclesService {
         fuelType: dto.fuelType,
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : dto.price === null ? null : undefined,
+        offerPrice: dto.offerPrice ? new Prisma.Decimal(dto.offerPrice) : dto.offerPrice === null ? null : undefined,
+        plate: dto.plate,
         isPublished: typeof dto.isPublished === 'boolean' ? dto.isPublished : undefined,
         consignorId: dto.consignorId,
       },

@@ -115,4 +115,38 @@ export class SuperAdminController {
   deleteUser(@Param('id') userId: string) {
     return this.sa.deleteUser(userId);
   }
+
+  // -------- Plans & Subscriptions --------
+  @Get('plans')
+  listPlans() {
+    return this.sa.listPlans();
+  }
+
+  @Get('plans/:id')
+  getPlan(@Param('id') id: string) {
+    return this.sa.getPlan(id);
+  }
+
+  @Post('plans')
+  createPlan(@Body() dto: any) {
+    return this.sa.createPlan(dto);
+  }
+
+  @Patch('plans/:id')
+  updatePlan(@Param('id') id: string, @Body() dto: any) {
+    return this.sa.updatePlan(id, dto);
+  }
+
+  @Delete('plans/:id')
+  deletePlan(@Param('id') id: string) {
+    return this.sa.deletePlan(id);
+  }
+
+  @Post('stores/:id/subscriptions')
+  createSubscription(
+    @Param('id') storeId: string,
+    @Body() dto: { planId: string; months: number; provider?: string; amount?: number }
+  ) {
+    return this.sa.createSubscription(storeId, dto);
+  }
 }

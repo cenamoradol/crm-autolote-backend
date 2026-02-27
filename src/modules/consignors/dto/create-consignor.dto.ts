@@ -15,5 +15,13 @@ export class CreateConsignorDto {
 
     @IsString()
     @IsOptional()
+    dni?: string;
+
+    @IsString()
+    @IsOptional()
+    rtn?: string;
+
+    @IsString()
+    @IsOptional()
     notes?: string;
 }

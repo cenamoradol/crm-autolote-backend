@@ -59,6 +59,14 @@ export class CreateVehicleDto {
   price?: string;
 
   @IsOptional()
+  @IsString()
+  offerPrice?: string;
+
+  @IsOptional()
+  @IsString()
+  plate?: string;
+
+  @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
 

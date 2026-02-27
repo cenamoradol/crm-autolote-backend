@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PaymentStatus, Prisma, SubscriptionProvider, SubscriptionStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 
@@ -90,8 +91,11 @@ export class SuperAdminService {
         branches: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
         subscriptions: {
           orderBy: { createdAt: 'desc' },
-          take: 5,
-          include: { plan: true },
+          take: 10,
+          include: {
+            plan: true,
+            payments: { select: { amount: true, currency: true }, take: 1 }
+          },
         },
         memberships: {
           include: {
@@ -114,16 +118,40 @@ export class SuperAdminService {
       permissionSetName: m.permissionSet?.name || null
     }));
 
-    const { memberships, ...rest } = store;
+    const { memberships, subscriptions, ...rest } = store;
+
+    // Suma de todos los pagos exitosos de esta tienda
+    const totalAgg = await this.prisma.payment.aggregate({
+      where: {
+        subscription: { storeId: storeId },
+        status: 'PAID'
+      },
+      _sum: { amount: true }
+    });
+
+    const subs = subscriptions.map(s => ({
+      ...s,
+      amount: s.payments[0]?.amount || 0,
+      payments: undefined // remove payments array from the client response to keep it clean
+    }));
 
     return {
       ...rest,
       members,
+      subscriptions: subs,
+      totalPerceived: totalAgg._sum.amount || 0
     };
   }
 
 
-  async updateStore(storeId: string, dto: { name?: string; slug?: string; logoUrl?: string; isActive?: boolean }) {
+  async updateStore(storeId: string, dto: {
+    name?: string;
+    slug?: string;
+    logoUrl?: string;
+    isActive?: boolean;
+    currency?: string;
+    currencySymbol?: string;
+  }) {
     const existing = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!existing) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store no existe.' });
 
@@ -132,6 +160,8 @@ export class SuperAdminService {
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.logoUrl !== undefined) data.logoUrl = dto.logoUrl?.trim() || null;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.currency !== undefined) data.currency = dto.currency;
+    if (dto.currencySymbol !== undefined) data.currencySymbol = dto.currencySymbol;
 
     if (dto.slug !== undefined) {
       const slug = dto.slug.trim().toLowerCase();
@@ -502,5 +532,125 @@ export class SuperAdminService {
 
     await this.prisma.branch.delete({ where: { id: branchId } });
     return this.getStore(storeId);
+  }
+
+  // ---------- Plans & Subscriptions ----------
+  async listPlans() {
+    return this.prisma.plan.findMany({
+      orderBy: { priceMonthly: 'asc' },
+    });
+  }
+
+  async getPlan(id: string) {
+    const plan = await this.prisma.plan.findUnique({ where: { id } });
+    if (!plan) throw new NotFoundException({ code: 'PLAN_NOT_FOUND', message: 'Plan no existe.' });
+    return plan;
+  }
+
+  async createPlan(dto: {
+    code: string;
+    name: string;
+    priceMonthly: number;
+    currency?: string;
+    isActive?: boolean;
+    features?: any;
+  }) {
+    const exists = await this.prisma.plan.findUnique({ where: { code: dto.code } });
+    if (exists) throw new BadRequestException({ code: 'PLAN_CODE_TAKEN', message: 'El código del plan ya existe.' });
+
+    return this.prisma.plan.create({
+      data: {
+        code: dto.code,
+        name: dto.name,
+        priceMonthly: new Prisma.Decimal(dto.priceMonthly),
+        currency: dto.currency || 'USD',
+        isActive: dto.isActive ?? true,
+        features: dto.features || {},
+      },
+    });
+  }
+
+  async updatePlan(id: string, dto: {
+    code?: string;
+    name?: string;
+    priceMonthly?: number;
+    currency?: string;
+    isActive?: boolean;
+    features?: any;
+  }) {
+    const existing = await this.getPlan(id);
+
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.currency !== undefined) data.currency = dto.currency;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.features !== undefined) data.features = dto.features;
+    if (dto.priceMonthly !== undefined) data.priceMonthly = new Prisma.Decimal(dto.priceMonthly);
+
+    if (dto.code !== undefined && dto.code !== existing.code) {
+      const taken = await this.prisma.plan.findUnique({ where: { code: dto.code } });
+      if (taken) throw new BadRequestException({ code: 'PLAN_CODE_TAKEN', message: 'El código del plan ya existe.' });
+      data.code = dto.code;
+    }
+
+    return this.prisma.plan.update({ where: { id }, data });
+  }
+
+  async deletePlan(id: string) {
+    await this.getPlan(id);
+    const inUse = await this.prisma.storeSubscription.findFirst({ where: { planId: id } });
+    if (inUse) {
+      // If in use, we just deactivate it
+      return this.prisma.plan.update({ where: { id }, data: { isActive: false } });
+    }
+    return this.prisma.plan.delete({ where: { id } });
+  }
+
+  async createSubscription(storeId: string, dto: {
+    planId: string;
+    months: number;
+    provider?: string;
+    amount?: number | string;
+  }) {
+    await this.getStore(storeId);
+
+    const plan = await this.prisma.plan.findUnique({ where: { id: dto.planId } });
+    if (!plan) throw new NotFoundException({ code: 'PLAN_NOT_FOUND', message: 'Plan no existe.' });
+
+    const months = Math.max(1, dto.months);
+    const now = new Date();
+    const endsAt = new Date(now);
+    endsAt.setMonth(endsAt.getMonth() + months);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Deactivar anteriores ACTIVE
+      await tx.storeSubscription.updateMany({
+        where: { storeId, status: SubscriptionStatus.ACTIVE },
+        data: { status: SubscriptionStatus.EXPIRED },
+      });
+
+      const sub = await tx.storeSubscription.create({
+        data: {
+          storeId,
+          planId: plan.id,
+          status: SubscriptionStatus.ACTIVE,
+          startsAt: now,
+          endsAt,
+          provider: (dto.provider as any) || SubscriptionProvider.BANK_TRANSFER,
+          payments: {
+            create: {
+              amount: new Prisma.Decimal(dto.amount || 0),
+              currency: plan.currency,
+              status: PaymentStatus.PAID,
+              provider: (dto.provider as any) || SubscriptionProvider.BANK_TRANSFER,
+              paidAt: now,
+            },
+          },
+        },
+        include: { plan: true },
+      });
+
+      return sub;
+    });
   }
 }

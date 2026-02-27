@@ -151,13 +151,31 @@ export class AuthService {
   async me(userId: string, storeId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, isSuperAdmin: true, createdAt: true },
+      select: { id: true, email: true, fullName: true, phone: true, isSuperAdmin: true, createdAt: true },
     });
     if (!user) return null;
 
     let permissions: string[] = [];
 
+    let storeCurrency = { currency: 'USD', currencySymbol: '$' };
+
     if (storeId) {
+      try {
+        const store = await (this.prisma.store as any).findUnique({
+          where: { id: storeId },
+          select: { currency: true, currencySymbol: true }
+        });
+        if (store) {
+          storeCurrency = {
+            currency: (store as any).currency || 'USD',
+            currencySymbol: (store as any).currencySymbol || '$'
+          };
+        }
+      } catch (e) {
+        console.error("Error fetching store currency (likely out-of-sync prisma client):", e);
+        // Fallback to defaults already set
+      }
+
       const memberships = await this.prisma.userRole.findMany({
         where: { userId, storeId },
         include: { permissionSet: true }
@@ -192,7 +210,7 @@ export class AuthService {
       permissions = Array.from(permSet);
     }
 
-    return { ...user, permissions };
+    return { ...user, permissions, ...storeCurrency };
   }
 
   async forgotPassword(email: string, req?: any) {
@@ -271,5 +289,36 @@ export class AuthService {
     });
 
     return { message: 'Password reset successfully' };
+  }
+
+  async updateProfile(userId: string, data: { fullName?: string; phone?: string }) {
+    const updateData: any = {};
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: { id: true, email: true, fullName: true, phone: true, isSuperAdmin: true, createdAt: true },
+    });
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('La contraseña actual es incorrecta');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Contraseña actualizada correctamente' };
   }
 }

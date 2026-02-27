@@ -10,6 +10,7 @@ datasource db {
 enum SubscriptionProvider {
   PAYPAL
   BANK_TRANSFER
+  MANUAL
 }
 
 enum SubscriptionStatus {
@@ -54,6 +55,14 @@ enum ActivityType {
   SYSTEM
 }
 
+enum CustomerStatus {
+  ACTIVE
+  CONTACTED
+  NO_RESPONSE
+  NOT_INTERESTED
+  PURCHASED
+}
+
 
 
 model Store {
@@ -62,6 +71,8 @@ model Store {
   slug        String   @unique
   logoUrl     String?  @map("logo_url")
   isActive    Boolean  @default(true)
+  currency    String   @default("USD")
+  currencySymbol String @default("$") @map("currency_symbol")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -78,8 +89,9 @@ model Store {
 
   subscriptions StoreSubscription[]
 
-  vehicleReservations VehicleReservation[]
-  leadPreferences     LeadPreference[]
+  vehicleReservations  VehicleReservation[]
+  leadPreferences      LeadPreference[]
+  customerPreferences  CustomerPreference[]
 
   auditLogs    AuditLog[]
   consignors   Consignor[]
@@ -135,6 +147,7 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   fullName     String?  @map("full_name")
+  phone        String?
   // SuperAdmin es global (no depende de store)
   isSuperAdmin Boolean  @default(false) @map("is_super_admin")
   isActive     Boolean  @default(true)
@@ -198,7 +211,8 @@ model Brand {
   models   Model[]
   vehicles Vehicle[]
 
-  leadPreferences LeadPreference[] @relation("LeadPreferenceDesiredBrand")
+  leadPreferences     LeadPreference[]     @relation("LeadPreferenceDesiredBrand")
+  customerPreferences CustomerPreference[] @relation("CustomerPreferenceBrand")
 
   @@index([name])
 }
@@ -212,7 +226,8 @@ model Model {
   brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   vehicles Vehicle[]
 
-  leadPreferences LeadPreference[] @relation("LeadPreferenceDesiredModel")
+  leadPreferences     LeadPreference[]     @relation("LeadPreferenceDesiredModel")
+  customerPreferences CustomerPreference[] @relation("CustomerPreferenceModel")
 
   @@unique([brandId, name])
   @@index([brandId])
@@ -234,9 +249,11 @@ model Vehicle {
   description String?
   year        Int?
   price       Decimal? @db.Decimal(12, 2)
+  offerPrice  Decimal? @db.Decimal(12, 2) @map("offer_price")
   mileage     Int?
   vin         String?
-  stockNumber String? @map("stock_number")
+  plate       String?
+  stockNumber String?  @map("stock_number")
   color       String?
   transmission String?
   engineSize   Float?   @map("engine_size")
@@ -334,20 +351,22 @@ model VehicleReservation {
 }
 
 model Customer {
-  id         String   @id @default(uuid()) @db.Uuid
-  storeId    String   @db.Uuid
-  fullName   String   @map("full_name")
+  id         String         @id @default(uuid()) @db.Uuid
+  storeId    String         @db.Uuid
+  fullName   String         @map("full_name")
   phone      String?
   email      String?
-  documentId String?  @map("document_id")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  documentId String?        @map("document_id")
+  status     CustomerStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  leads      Lead[]
-  sales      VehicleSale[]
-  activities Activity[]
+  leads       Lead[]
+  sales       VehicleSale[]
+  activities  Activity[]
+  preferences CustomerPreference[]
 
   reservations VehicleReservation[]
 
@@ -355,6 +374,29 @@ model Customer {
   @@index([storeId, createdAt])
   @@unique([storeId, phone], map: "customer_store_phone_unique")
   @@unique([storeId, email], map: "customer_store_email_unique")
+}
+
+model CustomerPreference {
+  id         String  @id @default(uuid()) @db.Uuid
+  storeId    String  @db.Uuid
+  customerId String  @db.Uuid @map("customer_id")
+  brandId    String? @db.Uuid @map("brand_id")
+  modelId    String? @db.Uuid @map("model_id")
+  yearFrom   Int?    @map("year_from")
+  yearTo     Int?    @map("year_to")
+  minPrice   Decimal? @db.Decimal(12, 2) @map("min_price")
+  maxPrice   Decimal? @db.Decimal(12, 2) @map("max_price")
+  isActive   Boolean @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  brand    Brand?    @relation("CustomerPreferenceBrand", fields: [brandId], references: [id], onDelete: SetNull)
+  model    Model?    @relation("CustomerPreferenceModel", fields: [modelId], references: [id], onDelete: SetNull)
+
+  @@index([storeId])
+  @@index([customerId])
 }
 
 model Lead {
@@ -472,9 +514,30 @@ model VehicleSale {
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
+  documents SaleDocument[]
+  status    SaleStatus     @default(COMPLETED)
+
   @@index([storeId])
   @@index([storeId, soldByUserId])
   @@index([storeId, soldAt])
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+}
+
+model SaleDocument {
+  id        String   @id @default(uuid()) @db.Uuid
+  saleId    String   @db.Uuid
+  name      String
+  fileKey   String   @map("file_key")
+  url       String
+  createdAt DateTime @default(now())
+
+  sale VehicleSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
 }
 
 model Plan {
@@ -573,6 +636,8 @@ model Consignor {
   fullName  String   @map("full_name")
   email     String?
   phone     String?
+  dni       String?
+  rtn       String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

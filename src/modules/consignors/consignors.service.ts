@@ -15,6 +15,7 @@ export class ConsignorsService {
                     { fullName: { contains: q, mode: 'insensitive' } },
                     { email: { contains: q, mode: 'insensitive' } },
                     { phone: { contains: q, mode: 'insensitive' } },
+                    { dni: { contains: q, mode: 'insensitive' } },
                 ] : undefined,
             },
             orderBy: { fullName: 'asc' },

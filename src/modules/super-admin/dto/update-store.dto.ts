@@ -18,4 +18,14 @@ export class UpdateStoreDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 10)
+  currency?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 10)
+  currencySymbol?: string;
 }
