@@ -146,7 +146,31 @@ export class DashboardService {
                     },
                 });
 
+                const salesCreated = await this.prisma.vehicleSale.count({
+                    where: {
+                        storeId,
+                        createdByUserId: userId,
+                        soldAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
                 const activitiesLogged = await this.prisma.activity.count({
+                    where: {
+                        storeId,
+                        createdByUserId: userId,
+                        createdAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
+                const consignorsCreated = await this.prisma.consignor.count({
+                    where: {
+                        storeId,
+                        createdByUserId: userId,
+                        createdAt: Object.keys(whereDate).length ? whereDate : undefined,
+                    },
+                });
+
+                const customersCreated = await this.prisma.customer.count({
                     where: {
                         storeId,
                         createdByUserId: userId,
@@ -164,7 +188,10 @@ export class DashboardService {
                     metrics: {
                         vehiclesCreated,
                         vehiclesSold,
+                        salesCreated,
                         activitiesLogged,
+                        consignorsCreated,
+                        customersCreated,
                     },
                 };
             })

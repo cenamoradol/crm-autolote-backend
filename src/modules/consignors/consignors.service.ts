@@ -38,11 +38,12 @@ export class ConsignorsService {
         return consignor;
     }
 
-    async create(storeId: string, dto: CreateConsignorDto) {
+    async create(storeId: string, userId: string, dto: CreateConsignorDto) {
         return this.prisma.consignor.create({
             data: {
                 ...dto,
                 storeId,
+                createdByUserId: userId,
             },
         });
     }

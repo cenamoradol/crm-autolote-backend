@@ -164,6 +164,9 @@ model User {
   reservedVehicles VehicleReservation[]   @relation("VehicleReservedBy")
   activities       Activity[]             @relation("ActivityCreatedBy")
   soldSales        VehicleSale[]          @relation("VehicleSoldBy")
+  createdSales     VehicleSale[]          @relation("VehicleSaleCreatedBy")
+  createdCustomers Customer[]             @relation("CustomerCreatedBy")
+  createdConsignors Consignor[]           @relation("ConsignorCreatedBy")
 
   assignedLeads Lead[] @relation("LeadAssignedTo")
 
@@ -358,10 +361,12 @@ model Customer {
   email      String?
   documentId String?        @map("document_id")
   status     CustomerStatus @default(ACTIVE)
+  createdByUserId String?   @db.Uuid @map("created_by_user_id")
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store     Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("CustomerCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   leads       Lead[]
   sales       VehicleSale[]
@@ -500,6 +505,7 @@ model VehicleSale {
   vehicleId String   @unique @db.Uuid
 
   soldByUserId String @db.Uuid @map("sold_by_user_id")
+  createdByUserId String? @db.Uuid @map("created_by_user_id")
   customerId   String? @db.Uuid @map("customer_id")
   leadId       String? @db.Uuid @map("lead_id")
 
@@ -510,6 +516,7 @@ model VehicleSale {
   store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   soldBy  User    @relation("VehicleSoldBy", fields: [soldByUserId], references: [id], onDelete: Restrict)
+  createdBy User? @relation("VehicleSaleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -639,10 +646,12 @@ model Consignor {
   dni       String?
   rtn       String?
   notes     String?
+  createdByUserId String? @db.Uuid @map("created_by_user_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("ConsignorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   vehicles  Vehicle[]
 
   @@index([storeId])

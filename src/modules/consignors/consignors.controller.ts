@@ -33,7 +33,7 @@ export class ConsignorsController {
     @RequirePermissions('consignors:create')
     @ApiOperation({ summary: 'Create consignor' })
     create(@Req() req: any, @Body() createConsignorDto: CreateConsignorDto) {
-        return this.consignorsService.create(req.storeId, createConsignorDto);
+        return this.consignorsService.create(req.storeId, req.user.sub, createConsignorDto);
     }
 
     @Patch(':id')

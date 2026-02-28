@@ -147,6 +147,7 @@ export class CustomersService {
           email: email ?? null,
           phone: phone ?? null,
           documentId: documentId ?? null,
+          createdByUserId: userId,
         },
         select: {
           id: true,
