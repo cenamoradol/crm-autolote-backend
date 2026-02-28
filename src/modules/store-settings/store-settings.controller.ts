@@ -82,7 +82,7 @@ export class StoreSettingsController {
 
   // -------- Members (for lookups) --------
   @Get('members')
-  @RequirePermissions('store_settings:read')
+  @RequirePermissions('store_settings:read', 'sales:read', 'sales:create', 'sales:update', 'activities:create', 'activities:update')
   listMembers(@Req() req: any, @Query('q') q?: string) {
     return this.settings.listMembers(req.storeId, q);
   }
