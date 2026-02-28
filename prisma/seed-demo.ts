@@ -1,10 +1,11 @@
 import { PrismaClient, Prisma, VehicleStatus, ActivityType, CustomerStatus, Brand, Model, VehicleType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🚀 Starting Robust Demo Seeder...');
+    console.log('🚀 Starting Robust Demo Seeder with Faker...');
 
     // 1. Plan
     console.log('📦 Seeding default plan...');
@@ -84,25 +85,37 @@ async function main() {
 
     // 6. Branches
     console.log('📍 Creating Branches...');
-    const existingMain = await prisma.branch.findFirst({ where: { storeId: store.id, name: 'Sucursal Principal' } });
-    const finalMainBranch = existingMain || await prisma.branch.create({
-        data: {
-            storeId: store.id,
-            name: 'Sucursal Principal',
-            address: 'Colonia Modelo, Tegucigalpa',
-            isPrimary: true,
-        }
-    });
+    const branches = [];
 
-    const existingSecond = await prisma.branch.findFirst({ where: { storeId: store.id, name: 'Sucursal Norte' } });
-    const finalSecondBranch = existingSecond || await prisma.branch.create({
-        data: {
-            storeId: store.id,
-            name: 'Sucursal Norte',
-            address: 'Boulevard del Norte, San Pedro Sula',
-            isPrimary: false,
-        }
+    let mainBranch = await prisma.branch.findFirst({
+        where: { storeId: store.id, name: 'Sucursal Principal' }
     });
+    if (!mainBranch) {
+        mainBranch = await prisma.branch.create({
+            data: {
+                storeId: store.id,
+                name: 'Sucursal Principal',
+                address: 'Colonia Modelo, Tegucigalpa',
+                isPrimary: true,
+            }
+        });
+    }
+    branches.push(mainBranch);
+
+    let secondaryBranch = await prisma.branch.findFirst({
+        where: { storeId: store.id, name: 'Sucursal Norte' }
+    });
+    if (!secondaryBranch) {
+        secondaryBranch = await prisma.branch.create({
+            data: {
+                storeId: store.id,
+                name: 'Sucursal Norte',
+                address: 'Boulevard del Norte, San Pedro Sula',
+                isPrimary: false,
+            }
+        });
+    }
+    branches.push(secondaryBranch);
 
     // 7. Vehicle Types
     console.log('🚗 Creating Vehicle Types...');
@@ -124,11 +137,14 @@ async function main() {
         { name: 'Honda', models: ['Civic', 'CR-V', 'Accord'] },
         { name: 'Ford', models: ['F-150', 'Explorer', 'Escape', 'Ranger'] },
         { name: 'Mitsubishi', models: ['L200', 'Montero', 'Nativa'] },
-        { name: 'Nissan', models: ['Sentra', 'Frontier', 'Kicks'] }
+        { name: 'Nissan', models: ['Sentra', 'Frontier', 'Kicks'] },
+        { name: 'Hyundai', models: ['Elantra', 'Tucson', 'Santa Fe'] },
+        { name: 'Kia', models: ['Sportage', 'Sorento', 'Rio'] },
+        { name: 'Mazda', models: ['CX-5', 'CX-9', 'Mazda 3'] }
     ];
 
-    const brandsMap = new Map<string, Brand>();
-    const modelsMap = new Map<string, Model[]>();
+    const brands: Brand[] = [];
+    const modelsByBrandId: Record<string, Model[]> = {};
 
     for (const b of brandsData) {
         const brand = await prisma.brand.upsert({
@@ -136,156 +152,109 @@ async function main() {
             update: {},
             create: { name: b.name },
         });
-        brandsMap.set(b.name, brand);
-        const bModels: Model[] = [];
+        brands.push(brand);
+        modelsByBrandId[brand.id] = [];
         for (const mName of b.models) {
             const model = await prisma.model.upsert({
                 where: { brandId_name: { brandId: brand.id, name: mName } },
                 update: {},
                 create: { brandId: brand.id, name: mName },
             });
-            bModels.push(model);
+            modelsByBrandId[brand.id].push(model);
         }
-        modelsMap.set(b.name, bModels);
     }
 
-    // 9. Vehicles
-    console.log('🚘 Seeding Vehicles...');
-    const vehiclesData = [
-        {
-            vin: 'DEMO-VIN-HILUX-001',
-            publicId: 'HILUX-2022',
-            title: 'Toyota Hilux 2022 SRX 4x4',
-            brand: 'Toyota',
-            model: 'Hilux',
-            year: 2022,
-            price: '950000',
-            mileage: 15000,
-            color: 'Blanco',
-            transmission: 'Automática',
-            fuelType: 'Diesel',
-            status: VehicleStatus.AVAILABLE,
-            plate: 'HAV 1234',
-            typeIndex: 2 // Pickup
-        },
-        {
-            vin: 'DEMO-VIN-CRV-002',
-            publicId: 'CRV-2018',
-            title: 'Honda CR-V 2018 Touring',
-            brand: 'Honda',
-            model: 'CR-V',
-            year: 2018,
-            price: '550000',
-            offerPrice: '525000',
-            mileage: 45000,
-            color: 'Gris',
-            transmission: 'CVT',
-            fuelType: 'Gasolina',
-            status: VehicleStatus.AVAILABLE,
-            plate: 'HBE 5566',
-            typeIndex: 1 // SUV
-        },
-        {
-            vin: 'DEMO-VIN-F150-003',
-            publicId: 'F150-2020',
-            title: 'Ford F-150 Raptor 2020',
-            brand: 'Ford',
-            model: 'F-150',
-            year: 2020,
-            price: '1450000',
-            mileage: 28000,
-            color: 'Negro',
-            transmission: 'Automática',
-            fuelType: 'Gasolina',
-            status: VehicleStatus.RESERVED,
-            plate: 'HCH 7788',
-            typeIndex: 2
-        }
-    ];
-
-    for (const v of vehiclesData) {
-        const brand = brandsMap.get(v.brand);
-        const models = modelsMap.get(v.brand);
-        if (!brand || !models) continue;
-
-        const model = models.find(m => m.name === v.model);
-        if (!model) continue;
-
-        await prisma.vehicle.upsert({
-            where: { storeId_vin: { storeId: store.id, vin: v.vin } },
-            update: {
-                status: v.status,
-                price: new Prisma.Decimal(v.price),
-                offerPrice: v.offerPrice ? new Prisma.Decimal(v.offerPrice) : null,
-            },
-            create: {
+    // 9. Customers
+    console.log('👥 Creating 50 Demo Customers...');
+    const customers = [];
+    for (let i = 0; i < 50; i++) {
+        const firstName = faker.person.firstName();
+        const lastName = faker.person.lastName();
+        const phone = faker.string.numeric({ length: 8, prefix: '+504 ' });
+        const c = await prisma.customer.create({
+            data: {
                 storeId: store.id,
-                branchId: finalMainBranch.id,
-                publicId: v.publicId,
-                vin: v.vin,
-                status: v.status,
+                fullName: `${firstName} ${lastName}`,
+                phone,
+                email: faker.internet.email({ firstName, lastName }),
+                status: faker.helpers.arrayElement([CustomerStatus.ACTIVE, CustomerStatus.INACTIVE, CustomerStatus.PROSPECT]),
+                createdByUserId: admin.id
+            }
+        });
+        customers.push(c);
+    }
+
+    // 10. Vehicles
+    console.log('🚘 Creating 60 Demo Vehicles...');
+    const vehicles: any[] = [];
+    const colors = ['Blanco', 'Gris', 'Negro', 'Rojo', 'Azul', 'Plata', 'Verde'];
+    const transmissions = ['Automática', 'Manual', 'CVT'];
+    const fuelTypes = ['Gasolina', 'Diesel', 'Híbrido'];
+
+    for (let i = 0; i < 60; i++) {
+        const brand = faker.helpers.arrayElement(brands);
+        const models = modelsByBrandId[brand.id];
+        const model = faker.helpers.arrayElement(models);
+        const year = faker.number.int({ min: 2010, max: 2024 });
+        const price = faker.number.int({ min: 150000, max: 1800000 });
+        const offerPrice = Math.random() > 0.7 ? price * 0.9 : null;
+        const vin = faker.vehicle.vin();
+
+        const v = await prisma.vehicle.create({
+            data: {
+                storeId: store.id,
+                branchId: faker.helpers.arrayElement(branches).id,
+                publicId: vin.slice(0, 8),
+                vin,
+                status: faker.helpers.arrayElement([VehicleStatus.AVAILABLE, VehicleStatus.AVAILABLE, VehicleStatus.RESERVED]),
                 isPublished: true,
                 brandId: brand.id,
                 modelId: model.id,
-                vehicleTypeId: vehicleTypes[v.typeIndex].id,
-                title: v.title,
-                year: v.year,
-                price: new Prisma.Decimal(v.price),
-                offerPrice: v.offerPrice ? new Prisma.Decimal(v.offerPrice) : null,
-                mileage: v.mileage,
-                color: v.color,
-                transmission: v.transmission,
-                fuelType: v.fuelType,
-                plate: v.plate,
+                vehicleTypeId: faker.helpers.arrayElement(vehicleTypes).id,
+                title: `${brand.name} ${model.name} ${year}`,
+                year,
+                price: new Prisma.Decimal(price),
+                offerPrice: offerPrice ? new Prisma.Decimal(offerPrice) : null,
+                mileage: faker.number.int({ min: 0, max: 150000 }),
+                color: faker.helpers.arrayElement(colors),
+                transmission: faker.helpers.arrayElement(transmissions),
+                fuelType: faker.helpers.arrayElement(fuelTypes),
+                plate: faker.string.alphanumeric({ length: 7, casing: 'upper' }),
                 createdByUserId: admin.id
             }
         });
+        vehicles.push(v);
     }
 
-    // 10. Customers
-    console.log('👥 Creating Demo Customers...');
-    const customer = await prisma.customer.upsert({
-        where: { storeId_phone: { storeId: store.id, phone: '+504 9988-7766' } },
-        update: { status: CustomerStatus.ACTIVE },
-        create: {
-            storeId: store.id,
-            fullName: 'Juan Pérez',
-            phone: '+504 9988-7766',
-            email: 'juan.perez@example.com',
-            status: CustomerStatus.ACTIVE,
-        }
-    });
+    // 11. Sales (Sell at least 15 vehicles)
+    console.log('💰 Creating 20 Demo Sales...');
+    const availableVehicleIndices = vehicles
+        .map((v, idx) => v.status !== VehicleStatus.SOLD ? idx : -1)
+        .filter(idx => idx !== -1);
 
-    const toyotaBrand = brandsMap.get('Toyota');
-    if (toyotaBrand) {
-        const existingPref = await prisma.customerPreference.findFirst({
-            where: { customerId: customer.id, brandId: toyotaBrand.id }
-        });
-        if (!existingPref) {
-            await prisma.customerPreference.create({
-                data: {
-                    storeId: store.id,
-                    customerId: customer.id,
-                    brandId: toyotaBrand.id,
-                    yearFrom: 2020,
-                    notes: 'Busca un pickup 4x4 reciente'
-                }
-            });
-        }
-    }
+    const soldVehiclesIndices = faker.helpers.arrayElements(availableVehicleIndices, 20);
 
-    const existingActivities = await prisma.activity.findFirst({
-        where: { customerId: customer.id, notes: { contains: 'Hilux' } }
-    });
-    if (!existingActivities) {
-        await prisma.activity.create({
+    for (const idx of soldVehiclesIndices) {
+        const vehicle = vehicles[idx];
+        const customer = faker.helpers.arrayElement(customers);
+
+        await prisma.vehicleSale.create({
             data: {
                 storeId: store.id,
+                vehicleId: vehicle.id,
+                soldByUserId: admin.id,
+                createdByUserId: admin.id,
                 customerId: customer.id,
-                type: ActivityType.CALL,
-                notes: 'Interesado en la Hilux blanca. Llamar el lunes.',
-                createdByUserId: admin.id
+                soldPrice: vehicle.price,
+                soldAt: faker.date.recent({ days: 60 }),
+                status: 'COMPLETED'
             }
+        });
+
+        // Update vehicle status
+        await prisma.vehicle.update({
+            where: { id: vehicle.id },
+            data: { status: VehicleStatus.SOLD }
         });
     }
 
@@ -294,6 +263,10 @@ async function main() {
       Super Admin: ${adminEmail}
       Password: ${adminPassword}
       Store Slug: autolote-demo
+      Records Created:
+        - Customers: 50
+        - Vehicles: 60 (20 Sold)
+        - Sales: 20
     `);
 }
 
