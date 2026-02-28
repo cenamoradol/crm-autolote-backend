@@ -394,6 +394,7 @@ export class SuperAdminService {
     return members.map(m => ({
       user: m.user,
       permissions: m.permissions as any,
+      permissionSetId: m.permissionSetId || null,
     }));
   }
 
