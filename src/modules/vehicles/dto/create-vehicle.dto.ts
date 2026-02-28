@@ -73,4 +73,20 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsUUID(4)
   consignorId?: string;
+
+  @IsOptional()
+  @IsString()
+  purchasePrice?: string;
+
+  @IsOptional()
+  @IsString()
+  repairCosts?: string;
+
+  @IsOptional()
+  @IsString()
+  paperworkCosts?: string;
+
+  @IsOptional()
+  @IsString()
+  otherCosts?: string;
 }

@@ -9,7 +9,7 @@ async function main() {
 
     // 1. Plan
     console.log('📦 Seeding default plan...');
-    const basicPlan = await prisma.plan.upsert({
+    await prisma.plan.upsert({
         where: { code: 'basic' },
         update: {},
         create: {
@@ -23,7 +23,7 @@ async function main() {
     });
 
     // 2. Super Admin User
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'isaaceverywere@gmail.com';
     const adminPassword = 'Admin123!';
     const passwordHash = await bcrypt.hash(adminPassword, 10);
 
@@ -57,7 +57,7 @@ async function main() {
 
     // 4. Permission Set (Role)
     console.log('🔑 Creating default roles...');
-    const sellerRole = await prisma.permissionSet.upsert({
+    await prisma.permissionSet.upsert({
         where: { storeId_name: { storeId: store.id, name: 'Vendedor' } },
         update: {},
         create: {
@@ -85,7 +85,7 @@ async function main() {
 
     // 6. Branches
     console.log('📍 Creating Branches...');
-    const branches = [];
+    const branches: any[] = [];
 
     let mainBranch = await prisma.branch.findFirst({
         where: { storeId: store.id, name: 'Sucursal Principal' }
@@ -166,18 +166,24 @@ async function main() {
 
     // 9. Customers
     console.log('👥 Creating 50 Demo Customers...');
-    const customers = [];
+    const customers: any[] = [];
     for (let i = 0; i < 50; i++) {
         const firstName = faker.person.firstName();
         const lastName = faker.person.lastName();
-        const phone = faker.string.numeric({ length: 8, prefix: '+504 ' });
+        // Fixed numeric usage
+        const phone = '+504 ' + faker.string.numeric(8);
         const c = await prisma.customer.create({
             data: {
                 storeId: store.id,
                 fullName: `${firstName} ${lastName}`,
                 phone,
                 email: faker.internet.email({ firstName, lastName }),
-                status: faker.helpers.arrayElement([CustomerStatus.ACTIVE, CustomerStatus.INACTIVE, CustomerStatus.PROSPECT]),
+                // Fixed enum values
+                status: faker.helpers.arrayElement([
+                    CustomerStatus.ACTIVE,
+                    CustomerStatus.CONTACTED,
+                    CustomerStatus.PURCHASED
+                ]),
                 createdByUserId: admin.id
             }
         });
