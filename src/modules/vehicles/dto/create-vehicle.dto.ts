@@ -34,8 +34,8 @@ export class CreateVehicleDto {
   mileage?: number;
 
   @IsOptional()
-  @IsString()
-  color?: string;
+  @IsUUID()
+  colorId?: string;
 
   @IsOptional()
   @IsString()

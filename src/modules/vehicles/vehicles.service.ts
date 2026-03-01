@@ -59,7 +59,7 @@ export class VehiclesService {
 
     return this.prisma.vehicle.findMany({
       where,
-      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
+      include: { brand: true, model: true, branch: true, colorRef: true, media: { orderBy: { position: 'asc' } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -67,7 +67,7 @@ export class VehiclesService {
   async get(storeId: string, id: string) {
     const v = await this.prisma.vehicle.findFirst({
       where: { id, storeId },
-      include: { brand: true, model: true, branch: true, media: { orderBy: { position: 'asc' } }, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
+      include: { brand: true, model: true, branch: true, colorRef: true, media: { orderBy: { position: 'asc' } }, reservation: { include: { customer: true, lead: true } }, sale: { include: { customer: true, lead: true, soldBy: true } }, vehicleType: true, consignor: true, createdBy: true },
     });
     if (!v) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
     return v;
@@ -91,7 +91,7 @@ export class VehiclesService {
         year: dto.year,
         vin: dto.vin,
         mileage: dto.mileage,
-        color: dto.color,
+        colorId: dto.colorId,
         transmission: dto.transmission,
         fuelType: dto.fuelType,
         engineSize: dto.engineSize,
@@ -144,7 +144,7 @@ export class VehiclesService {
         year: dto.year,
         vin: dto.vin,
         mileage: dto.mileage,
-        color: dto.color,
+        colorId: dto.colorId,
         transmission: dto.transmission,
         fuelType: dto.fuelType,
         engineSize: dto.engineSize,

@@ -40,6 +40,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { VehicleTypesModule } from './modules/vehicle-types/vehicle-types.module';
 import { MailModule } from './modules/mail/mail.module';
 import { PermissionSetsModule } from './modules/permission-sets/permission-sets.module';
+import { ColorsModule } from './modules/colors/colors.module';
 
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
@@ -90,6 +91,7 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     DashboardModule,
     MailModule,
     PermissionSetsModule,
+    ColorsModule,
   ],
 
   providers: [

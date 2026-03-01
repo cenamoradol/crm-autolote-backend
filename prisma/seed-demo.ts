@@ -222,7 +222,6 @@ async function main() {
                 price: new Prisma.Decimal(price),
                 offerPrice: offerPrice ? new Prisma.Decimal(offerPrice) : null,
                 mileage: faker.number.int({ min: 0, max: 150000 }),
-                color: faker.helpers.arrayElement(colors),
                 transmission: faker.helpers.arrayElement(transmissions),
                 fuelType: faker.helpers.arrayElement(fuelTypes),
                 plate: faker.string.alphanumeric({ length: 7, casing: 'upper' }),

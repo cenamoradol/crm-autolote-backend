@@ -241,7 +241,6 @@ async function main() {
       year: 2018,
       price: new Prisma.Decimal('12500.00'),
       mileage: 78000,
-      color: 'Blanco',
       transmission: 'Automática',
       fuelType: 'Gasolina',
       isPublished: true,

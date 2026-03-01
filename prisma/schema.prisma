@@ -257,7 +257,7 @@ model Vehicle {
   vin         String?
   plate       String?
   stockNumber String?  @map("stock_number")
-  color       String?
+  colorId     String?  @db.Uuid @map("color_id")
   transmission String?
   engineSize   Float?   @map("engine_size")
   fuelType     String? @map("fuel_type")
@@ -280,6 +280,7 @@ model Vehicle {
   branch  Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
   brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
   model   Model  @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  colorRef Color? @relation(fields: [colorId], references: [id], onDelete: SetNull)
   vehicleType VehicleType? @relation(fields: [vehicleTypeId], references: [id], onDelete: SetNull)
 
   consignor Consignor? @relation(fields: [consignorId], references: [id], onDelete: SetNull)
@@ -449,6 +450,16 @@ model VehicleType {
 
   vehicles Vehicle[]
   leadPreferences LeadPreference[] @relation("LeadPreferenceVehicleType")
+
+  @@index([name])
+}
+
+model Color {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  vehicles Vehicle[]
 
   @@index([name])
 }

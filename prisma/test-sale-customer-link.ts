@@ -39,7 +39,6 @@ async function main() {
             engineSize: 2.0,
             transmission: 'Automática',
             fuelType: 'Gasolina',
-            color: 'Blanco',
         }
     });
 

@@ -37,8 +37,8 @@ export class UpdateVehicleDto {
   mileage?: number;
 
   @IsOptional()
-  @IsString()
-  color?: string;
+  @IsUUID(4)
+  colorId?: string;
 
   @IsOptional()
   @IsString()
