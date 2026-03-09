@@ -78,6 +78,18 @@ export class VehiclesService {
     const branch = await this.prisma.branch.findFirst({ where: { id: dto.branchId, storeId } });
     if (!branch) throw new BadRequestException({ code: 'INVALID_BRANCH', message: 'Branch inválido.' });
 
+    if (dto.vin) {
+      const existing = await this.prisma.vehicle.findFirst({
+        where: { storeId, vin: dto.vin },
+      });
+      if (existing) {
+        throw new BadRequestException({
+          code: 'DUPLICATE_VIN',
+          message: 'Ya existe un vehículo con este VIN.',
+        });
+      }
+    }
+
     const vehicle = await this.prisma.vehicle.create({
       data: {
         storeId,
@@ -124,12 +136,24 @@ export class VehiclesService {
 
   async update(storeId: string, userId: string, id: string, dto: any) {
     await this.canModifyVehicle(storeId, id, userId);
-    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true } });
+    const current = await this.prisma.vehicle.findFirst({ where: { id, storeId }, select: { id: true, title: true, vin: true } });
     if (!current) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
 
     if (dto.branchId) {
       const branch = await this.prisma.branch.findFirst({ where: { id: dto.branchId, storeId } });
       if (!branch) throw new BadRequestException({ code: 'INVALID_BRANCH', message: 'Branch inválido.' });
+    }
+
+    if (dto.vin && dto.vin !== current.vin) {
+      const existing = await this.prisma.vehicle.findFirst({
+        where: { storeId, vin: dto.vin },
+      });
+      if (existing) {
+        throw new BadRequestException({
+          code: 'DUPLICATE_VIN',
+          message: 'Ya existe otro vehículo con este VIN en esta tienda.',
+        });
+      }
     }
 
     const updated = await this.prisma.vehicle.update({
