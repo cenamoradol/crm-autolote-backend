@@ -26,12 +26,19 @@ export class VehiclesService {
 
     const memberships = await this.prisma.userRole.findMany({
       where: { userId, storeId },
+      include: { permissionSet: true },
     });
 
     for (const ur of memberships) {
+      // 1. Direct permissions (overrides)
       if (ur.permissions) {
         const perms = ur.permissions as Record<string, string[]>;
         if (perms.sales?.includes('override_closed')) return true;
+      }
+      // 2. Permission Set permissions
+      if ((ur as any).permissionSet?.permissions) {
+        const setPerms = (ur as any).permissionSet.permissions as Record<string, string[]>;
+        if (setPerms.sales?.includes('override_closed')) return true;
       }
     }
 
