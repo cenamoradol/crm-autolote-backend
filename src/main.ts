@@ -18,6 +18,11 @@ function parseOrigins(value?: string): string[] {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Payload limits
+  const { json, urlencoded } = require('body-parser');
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
+
   // Prefix API
   const prefix = process.env.API_PREFIX || 'api/v1';
   app.setGlobalPrefix(prefix);

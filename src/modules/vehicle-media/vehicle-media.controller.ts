@@ -42,7 +42,7 @@ export class VehicleMediaController {
   @RequirePermissions('inventory:update')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 8 * 1024 * 1024 }, // ✅ 8MB por archivo (ajusta aquí)
+      limits: { fileSize: 20 * 1024 * 1024 }, // ✅ Aumentado a 20MB
     }),
   )
   upload(
@@ -59,7 +59,7 @@ export class VehicleMediaController {
   @RequirePermissions('inventory:update')
   @UseInterceptors(
     FilesInterceptor('files', 20, {
-      limits: { fileSize: 8 * 1024 * 1024 }, // ✅ 8MB por archivo (ajusta aquí)
+      limits: { fileSize: 20 * 1024 * 1024 }, // ✅ Aumentado a 20MB
     }),
   )
   uploadMany(
