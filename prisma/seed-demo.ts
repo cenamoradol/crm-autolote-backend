@@ -221,6 +221,8 @@ async function main() {
                 year,
                 price: new Prisma.Decimal(price),
                 offerPrice: offerPrice ? new Prisma.Decimal(offerPrice) : null,
+                clearancePrice: null,
+                isClearance: Math.random() > 0.9, // 10% vehicles in clearance
                 mileage: faker.number.int({ min: 0, max: 150000 }),
                 transmission: faker.helpers.arrayElement(transmissions),
                 fuelType: faker.helpers.arrayElement(fuelTypes),
