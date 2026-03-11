@@ -48,12 +48,17 @@ export class VehiclesService {
     });
   }
 
-  async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string }) {
+  async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string; clearance?: string }) {
     const where: Prisma.VehicleWhereInput = { storeId, status: { not: 'ARCHIVED' } };
 
     if (q.status) where.status = q.status;
     if (q.published === 'true') where.isPublished = true;
     if (q.published === 'false') where.isPublished = false;
+    if (q.clearance === 'true') {
+      where.isClearance = true;
+    } else {
+      where.isClearance = false;
+    }
 
     if (q.search) {
       where.OR = [
@@ -116,12 +121,14 @@ export class VehiclesService {
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : undefined,
         offerPrice: dto.offerPrice ? new Prisma.Decimal(dto.offerPrice) : undefined,
+        clearancePrice: dto.clearancePrice ? new Prisma.Decimal(dto.clearancePrice) : undefined,
         plate: dto.plate,
         purchasePrice: dto.purchasePrice ? new Prisma.Decimal(dto.purchasePrice) : undefined,
         repairCosts: dto.repairCosts ? new Prisma.Decimal(dto.repairCosts) : undefined,
         paperworkCosts: dto.paperworkCosts ? new Prisma.Decimal(dto.paperworkCosts) : undefined,
         otherCosts: dto.otherCosts ? new Prisma.Decimal(dto.otherCosts) : undefined,
         isPublished: dto.isPublished ?? false,
+        isClearance: dto.isClearance ?? false,
         consignorId: dto.consignorId,
         createdByUserId: userId,
         status: 'AVAILABLE',
@@ -181,12 +188,14 @@ export class VehiclesService {
         engineSize: dto.engineSize,
         price: dto.price ? new Prisma.Decimal(dto.price) : dto.price === null ? null : undefined,
         offerPrice: dto.offerPrice ? new Prisma.Decimal(dto.offerPrice) : dto.offerPrice === null ? null : undefined,
+        clearancePrice: dto.clearancePrice ? new Prisma.Decimal(dto.clearancePrice) : dto.clearancePrice === null ? null : undefined,
         plate: dto.plate,
         purchasePrice: dto.purchasePrice ? new Prisma.Decimal(dto.purchasePrice) : dto.purchasePrice === null ? null : undefined,
         repairCosts: dto.repairCosts ? new Prisma.Decimal(dto.repairCosts) : dto.repairCosts === null ? null : undefined,
         paperworkCosts: dto.paperworkCosts ? new Prisma.Decimal(dto.paperworkCosts) : dto.paperworkCosts === null ? null : undefined,
         otherCosts: dto.otherCosts ? new Prisma.Decimal(dto.otherCosts) : dto.otherCosts === null ? null : undefined,
         isPublished: typeof dto.isPublished === 'boolean' ? dto.isPublished : undefined,
+        isClearance: typeof dto.isClearance === 'boolean' ? dto.isClearance : undefined,
         consignorId: dto.consignorId,
       },
     });

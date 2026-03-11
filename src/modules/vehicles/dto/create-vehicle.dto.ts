@@ -64,11 +64,19 @@ export class CreateVehicleDto {
 
   @IsOptional()
   @IsString()
+  clearancePrice?: string;
+
+  @IsOptional()
+  @IsString()
   plate?: string;
 
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isClearance?: boolean;
 
   @IsOptional()
   @IsUUID(4)
