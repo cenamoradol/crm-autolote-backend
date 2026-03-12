@@ -87,7 +87,7 @@ export class VehicleMediaService {
 
     if (!file || !file.buffer?.length) throw new ForbiddenException('FILE_REQUIRED');
 
-    const allowedImages = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedImages = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
     const allowedVideos = ['video/mp4'];
 
     const kind = this.normalizeKind(dto.kind, file.mimetype);
