@@ -24,4 +24,40 @@ export class PublicController {
   getById(@Param('storeId') storeId: string, @Param('publicId') publicId: string) {
     return this.pub.getVehicleById(storeId, publicId);
   }
+
+  @Get('id/:storeId/clearance')
+  listClearanceById(@Param('storeId') storeId: string) {
+    return this.pub.listClearanceVehiclesById(storeId);
+  }
+
+  // ─── Events (public) ──────────────────────────────────────
+
+  @Get('stores/:storeSlug/event-categories')
+  listEventCategories(@Param('storeSlug') storeSlug: string) {
+    return this.pub.listEventCategories(storeSlug);
+  }
+
+  @Get('stores/:storeSlug/event-categories/:categorySlug/events')
+  listCategoryEvents(
+    @Param('storeSlug') storeSlug: string,
+    @Param('categorySlug') categorySlug: string,
+  ) {
+    return this.pub.listCategoryEvents(storeSlug, categorySlug);
+  }
+
+  @Get('id/:storeId/event-categories/:categorySlug/events')
+  listCategoryEventsById(
+    @Param('storeId') storeId: string,
+    @Param('categorySlug') categorySlug: string,
+  ) {
+    return this.pub.listCategoryEventsById(storeId, categorySlug);
+  }
+
+  @Get('stores/:storeSlug/events/:eventSlug')
+  getEvent(
+    @Param('storeSlug') storeSlug: string,
+    @Param('eventSlug') eventSlug: string,
+  ) {
+    return this.pub.getEvent(storeSlug, eventSlug);
+  }
 }
