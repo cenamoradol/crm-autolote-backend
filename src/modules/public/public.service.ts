@@ -13,7 +13,7 @@ export class PublicService {
     if (!store) throw new NotFoundException('Store no existe.');
 
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { storeId: store.id, isPublished: true, status: { not: 'ARCHIVED' } },
+      where: { storeId: store.id, isPublished: true, isClearance: false, status: { not: 'ARCHIVED' } },
       select: {
         id: true,
         publicId: true,
@@ -53,7 +53,7 @@ export class PublicService {
     if (!store) throw new NotFoundException('Store no existe.');
 
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { storeId: store.id, isPublished: true, status: { not: 'ARCHIVED' } },
+      where: { storeId: store.id, isPublished: true, isClearance: false, status: { not: 'ARCHIVED' } },
       select: {
         id: true,
         publicId: true,
