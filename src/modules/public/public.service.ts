@@ -163,6 +163,7 @@ export class PublicService {
         media: true,
         colorRef: true,
         vehicleType: true,
+        isClearance: true,
         branch: { select: { id: true, name: true, address: true } },
       },
     });
@@ -203,6 +204,7 @@ export class PublicService {
         media: true,
         colorRef: true,
         vehicleType: true,
+        isClearance: true,
         branch: { select: { id: true, name: true, address: true } },
       },
     });
