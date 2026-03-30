@@ -56,7 +56,7 @@ export class VehiclesService {
     if (q.published === 'false') where.isPublished = false;
     if (q.clearance === 'true') {
       where.isClearance = true;
-    } else {
+    } else if (q.clearance === 'false') {
       where.isClearance = false;
     }
 
