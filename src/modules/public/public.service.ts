@@ -213,6 +213,39 @@ export class PublicService {
     return { store, vehicle };
   }
 
+  // ─── Servicios (Public) ────────────────────────────────────
+  
+  async listServiceCategoriesById(storeId: string) {
+    const categories = await this.prisma.serviceCategory.findMany({
+      where: { storeId },
+      orderBy: { name: 'asc' },
+    });
+    return categories;
+  }
+
+  async listServicesById(storeId: string, categorySlug?: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+    });
+    if (!store) throw new NotFoundException('Store no existe.');
+
+    const services = await this.prisma.serviceListing.findMany({
+      where: { 
+        storeId: store.id, 
+        isPublished: true,
+        ...(categorySlug ? { category: { slug: categorySlug } } : {})
+      },
+      include: { 
+        media: { orderBy: { position: 'asc' } },
+        category: true
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { store, services };
+  }
+
   // ─── Events ────────────────────────────────────────────────
 
   async listEventCategories(storeSlug: string) {

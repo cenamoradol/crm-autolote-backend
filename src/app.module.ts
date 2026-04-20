@@ -43,6 +43,8 @@ import { PermissionSetsModule } from './modules/permission-sets/permission-sets.
 import { ColorsModule } from './modules/colors/colors.module';
 import { EventsModule } from './modules/events/events.module';
 import { EventMediaModule } from './modules/event-media/event-media.module';
+import { ServicesModule } from './modules/services/services.module';
+import { ServiceCategoriesModule } from './modules/service-categories/service-categories.module';
 
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
@@ -96,6 +98,8 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     ColorsModule,
     EventsModule,
     EventMediaModule,
+    ServicesModule,
+    ServiceCategoriesModule,
   ],
 
   providers: [

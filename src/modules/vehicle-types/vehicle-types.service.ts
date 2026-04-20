@@ -16,6 +16,11 @@ export class VehicleTypesService {
   findAll() {
     return this.prisma.vehicleType.findMany({
       orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: { vehicles: true }
+        }
+      }
     });
   }
 

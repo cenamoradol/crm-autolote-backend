@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { PublicService } from './public.service';
 
 @Controller('public')
@@ -28,6 +28,19 @@ export class PublicController {
   @Get('id/:storeId/clearance')
   listClearanceById(@Param('storeId') storeId: string) {
     return this.pub.listClearanceVehiclesById(storeId);
+  }
+
+  @Get('id/:storeId/services')
+  listServicesById(
+    @Param('storeId') storeId: string,
+    @Query('category') category?: string
+  ) {
+    return this.pub.listServicesById(storeId, category);
+  }
+
+  @Get('id/:storeId/service-categories')
+  listServiceCategoriesById(@Param('storeId') storeId: string) {
+    return this.pub.listServiceCategoriesById(storeId);
   }
 
   // ─── Events (public) ──────────────────────────────────────

@@ -88,7 +88,14 @@ export class SuperAdminService {
       where: { id: storeId },
       include: {
         domains: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
-        branches: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] },
+        branches: {
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          include: {
+            _count: {
+              select: { vehicles: true }
+            }
+          }
+        },
         subscriptions: {
           orderBy: { createdAt: 'desc' },
           take: 10,

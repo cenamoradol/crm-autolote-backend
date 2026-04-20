@@ -99,6 +99,8 @@ model Store {
 
   eventCategories EventCategory[]
   events          Event[]
+  serviceCategories ServiceCategory[]
+  serviceListings ServiceListing[]
 
   @@index([createdAt])
 }
@@ -775,3 +777,59 @@ model EventVehicle {
   @@index([eventId])
   @@index([vehicleId])
 }
+
+// ─── Servicios (Directorio Comercial) ─────────────────────────
+
+model ServiceCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  storeId   String   @db.Uuid
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  listings ServiceListing[]
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+model ServiceListing {
+  id          String   @id @default(uuid()) @db.Uuid
+  storeId     String   @db.Uuid
+  categoryId  String?  @db.Uuid @map("category_id")
+  name        String
+  serviceType String?  @map("service_type")
+  address     String?
+  phone       String?
+  email       String?
+  description String?
+  isPublished Boolean  @default(false) @map("is_published")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  media    ServiceMedia[]
+
+  @@index([storeId])
+  @@index([storeId, isPublished])
+}
+
+model ServiceMedia {
+  id               String         @id @default(uuid()) @db.Uuid
+  serviceListingId String         @db.Uuid @map("service_listing_id")
+  kind             MediaKind      @default(IMAGE)
+  fileKey          String         @map("file_key")
+  url              String
+  position         Int            @default(0)
+  isCover          Boolean        @default(false) @map("is_cover")
+  createdAt        DateTime       @default(now())
+
+  service ServiceListing @relation(fields: [serviceListingId], references: [id], onDelete: Cascade)
+
+  @@index([serviceListingId])
+  @@index([serviceListingId, position])
+}
+
