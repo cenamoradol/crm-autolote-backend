@@ -7,14 +7,33 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class VehicleTypesService {
   constructor(private readonly prisma: PrismaService) { }
 
-  create(dto: CreateVehicleTypeDto) {
+  async create(dto: CreateVehicleTypeDto) {
+    const name = dto.name.trim();
+
+    // Check if it exists (including soft deleted)
+    const existing = await this.prisma.vehicleType.findFirst({
+      where: { name }
+    });
+
+    if (existing) {
+      if (existing.deletedAt) {
+        // Restore
+        return this.prisma.vehicleType.update({
+          where: { id: existing.id },
+          data: { deletedAt: null }
+        });
+      }
+      return existing; // Or throw conflict, but restore fits better for soft delete flow
+    }
+
     return this.prisma.vehicleType.create({
-      data: { name: dto.name.trim() },
+      data: { name },
     });
   }
 
   async findAll(storeId?: string) {
     const types = await this.prisma.vehicleType.findMany({
+      where: { deletedAt: null },
       orderBy: { name: 'asc' },
       include: {
         _count: {
@@ -44,8 +63,8 @@ export class VehicleTypesService {
   }
 
   findOne(id: string) {
-    return this.prisma.vehicleType.findUnique({
-      where: { id },
+    return this.prisma.vehicleType.findFirst({
+      where: { id, deletedAt: null },
     });
   }
 
@@ -54,14 +73,15 @@ export class VehicleTypesService {
     if (dto.name) data.name = dto.name.trim();
 
     return this.prisma.vehicleType.update({
-      where: { id },
+      where: { id, deletedAt: null },
       data,
     });
   }
 
   remove(id: string) {
-    return this.prisma.vehicleType.delete({
+    return this.prisma.vehicleType.update({
       where: { id },
+      data: { deletedAt: new Date() }
     });
   }
 }

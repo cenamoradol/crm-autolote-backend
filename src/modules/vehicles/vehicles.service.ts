@@ -48,12 +48,13 @@ export class VehiclesService {
     });
   }
 
-  async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string; clearance?: string }) {
+  async list(storeId: string, q: { status?: VehicleStatus; published?: string; search?: string; clearance?: string; vehicleTypeId?: string }) {
     const where: Prisma.VehicleWhereInput = { storeId, status: { not: 'ARCHIVED' } };
 
     if (q.status) where.status = q.status;
     if (q.published === 'true') where.isPublished = true;
     if (q.published === 'false') where.isPublished = false;
+    if (q.vehicleTypeId) where.vehicleTypeId = q.vehicleTypeId;
     if (q.clearance === 'true') {
       where.isClearance = true;
     } else if (q.clearance === 'false') {

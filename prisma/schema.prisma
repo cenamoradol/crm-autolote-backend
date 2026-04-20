@@ -453,9 +453,10 @@ model Lead {
 }
 
 model VehicleType {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? @map("deleted_at")
 
   vehicles Vehicle[]
   leadPreferences LeadPreference[] @relation("LeadPreferenceVehicleType")

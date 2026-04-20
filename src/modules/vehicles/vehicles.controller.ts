@@ -22,8 +22,9 @@ export class VehiclesController {
     @Query('published') published?: string,
     @Query('search') search?: string,
     @Query('clearance') clearance?: string,
+    @Query('vehicleTypeId') vehicleTypeId?: string,
   ) {
-    return this.vehicles.list(req.storeId, { status, published, search, clearance });
+    return this.vehicles.list(req.storeId, { status, published, search, clearance, vehicleTypeId });
   }
 
   @Get(':id')
