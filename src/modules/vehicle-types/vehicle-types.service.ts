@@ -13,14 +13,33 @@ export class VehicleTypesService {
     });
   }
 
-  findAll() {
-    return this.prisma.vehicleType.findMany({
+  async findAll(storeId?: string) {
+    const types = await this.prisma.vehicleType.findMany({
       orderBy: { name: 'asc' },
       include: {
         _count: {
           select: { vehicles: true }
         }
       }
+    });
+
+    if (!storeId) return types;
+
+    // Filtered counts by store
+    const counts = await this.prisma.vehicle.groupBy({
+      by: ['vehicleTypeId'],
+      where: { storeId },
+      _count: { _all: true }
+    });
+
+    return types.map(t => {
+      const found = counts.find(c => c.vehicleTypeId === t.id);
+      return {
+        ...t,
+        _count: {
+          vehicles: found?._count._all || 0
+        }
+      };
     });
   }
 

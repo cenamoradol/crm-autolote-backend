@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { VehicleTypesService } from './vehicle-types.service';
 import { CreateVehicleTypeDto } from './dto/create-vehicle-type.dto';
 import { UpdateVehicleTypeDto } from './dto/update-vehicle-type.dto';
@@ -13,8 +13,8 @@ export class VehicleTypesController {
   }
 
   @Get()
-  findAll() {
-    return this.vehicleTypesService.findAll();
+  findAll(@Query('storeId') storeId?: string) {
+    return this.vehicleTypesService.findAll(storeId);
   }
 
   @Get(':id')
