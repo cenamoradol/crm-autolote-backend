@@ -415,10 +415,25 @@ export class PublicService {
         imageUrl: true,
         targetUrl: true,
         placement: true,
+        weight: true,
       },
       orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
     });
 
     return { store, advertisements };
+  }
+
+  async trackImpression(adId: string) {
+    return this.prisma.advertisement.update({
+      where: { id: adId },
+      data: { impressions: { increment: 1 } },
+    });
+  }
+
+  async trackClick(adId: string) {
+    return this.prisma.advertisement.update({
+      where: { id: adId },
+      data: { clicks: { increment: 1 } },
+    });
   }
 }

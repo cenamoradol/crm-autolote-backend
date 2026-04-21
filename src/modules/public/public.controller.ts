@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post } from '@nestjs/common';
 import { PublicService } from './public.service';
 
 @Controller('public')
@@ -79,6 +79,16 @@ export class PublicController {
   @Get('id/:storeId/advertisements')
   listAdvertisementsById(@Param('storeId') storeId: string) {
     return this.pub.listAdvertisementsById(storeId);
+  }
+
+  @Post('advertisements/:id/impression')
+  trackImpression(@Param('id') id: string) {
+    return this.pub.trackImpression(id);
+  }
+
+  @Post('advertisements/:id/click')
+  trackClick(@Param('id') id: string) {
+    return this.pub.trackClick(id);
   }
 }
 

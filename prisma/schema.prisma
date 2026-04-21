@@ -853,6 +853,14 @@ model Advertisement {
   placement AdPlacement
   isActive  Boolean      @default(true) @map("is_active")
   position  Int          @default(0)
+  
+  // Metrics
+  impressions Int        @default(0)
+  clicks      Int        @default(0)
+  
+  // Randomization weights
+  weight      Int        @default(1)
+
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 

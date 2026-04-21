@@ -35,4 +35,9 @@ export class CreateAdvertisementDto {
   @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   position?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  @IsInt()
+  weight?: number;
 }

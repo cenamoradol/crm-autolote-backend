@@ -63,6 +63,7 @@ export class AdvertisementsService {
         placement: dto.placement,
         isActive: dto.isActive ?? true,
         position: dto.position ?? 0,
+        weight: dto.weight ?? 1,
       },
     });
   }
@@ -107,6 +108,7 @@ export class AdvertisementsService {
         ...(dto.placement !== undefined && { placement: dto.placement }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.position !== undefined && { position: dto.position }),
+        ...(dto.weight !== undefined && { weight: dto.weight }),
         imageUrl,
         kind,
       },
@@ -127,6 +129,7 @@ export class AdvertisementsService {
         placement: dto.placement,
         isActive: dto.isActive ?? true,
         position: dto.position ?? 0,
+        weight: dto.weight ?? 1,
       },
     });
   }
@@ -161,6 +164,7 @@ export class AdvertisementsService {
         ...(dto.placement !== undefined && { placement: dto.placement }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.position !== undefined && { position: dto.position }),
+        ...(dto.weight !== undefined && { weight: dto.weight }),
       },
     });
   }
