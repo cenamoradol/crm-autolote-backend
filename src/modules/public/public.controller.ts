@@ -73,4 +73,12 @@ export class PublicController {
   ) {
     return this.pub.getEvent(storeSlug, eventSlug);
   }
+
+  // ─── Advertisements ─────────────────────────────────────────
+
+  @Get('id/:storeId/advertisements')
+  listAdvertisementsById(@Param('storeId') storeId: string) {
+    return this.pub.listAdvertisementsById(storeId);
+  }
 }
+

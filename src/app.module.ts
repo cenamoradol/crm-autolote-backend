@@ -45,6 +45,7 @@ import { EventsModule } from './modules/events/events.module';
 import { EventMediaModule } from './modules/event-media/event-media.module';
 import { ServicesModule } from './modules/services/services.module';
 import { ServiceCategoriesModule } from './modules/service-categories/service-categories.module';
+import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
 
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
@@ -100,6 +101,7 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     EventMediaModule,
     ServicesModule,
     ServiceCategoriesModule,
+    AdvertisementsModule,
   ],
 
   providers: [

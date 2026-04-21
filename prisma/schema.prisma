@@ -63,6 +63,12 @@ enum CustomerStatus {
   PURCHASED
 }
 
+enum AdPlacement {
+  HERO
+  VEHICLE_LIST
+  FLOATING_BOTTOM
+}
+
 
 
 model Store {
@@ -101,6 +107,7 @@ model Store {
   events          Event[]
   serviceCategories ServiceCategory[]
   serviceListings ServiceListing[]
+  advertisements  Advertisement[]
 
   @@index([createdAt])
 }
@@ -832,5 +839,27 @@ model ServiceMedia {
 
   @@index([serviceListingId])
   @@index([serviceListingId, position])
+}
+
+// ─── Advertisements ───────────────────────────────────────────
+
+model Advertisement {
+  id        String       @id @default(uuid()) @db.Uuid
+  storeId   String       @db.Uuid
+  title     String?
+  kind      MediaKind   @default(IMAGE)
+  imageUrl  String      @map("image_url")
+  targetUrl String?     @map("target_url")
+  placement AdPlacement
+  isActive  Boolean      @default(true) @map("is_active")
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([storeId, isActive])
+  @@index([storeId, placement])
 }
 

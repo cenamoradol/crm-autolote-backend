@@ -396,4 +396,29 @@ export class PublicService {
     if (!event || !event.isPublished) throw new NotFoundException('Evento no encontrado.');
     return { store, event };
   }
+
+  // ─── Advertisements ─────────────────────────────────────────
+
+  async listAdvertisementsById(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!store) throw new NotFoundException('Store no existe.');
+
+    const advertisements = await this.prisma.advertisement.findMany({
+      where: { storeId: store.id, isActive: true },
+      select: {
+        id: true,
+        title: true,
+        kind: true,
+        imageUrl: true,
+        targetUrl: true,
+        placement: true,
+      },
+      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    return { store, advertisements };
+  }
 }
