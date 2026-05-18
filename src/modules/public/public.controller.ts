@@ -90,5 +90,25 @@ export class PublicController {
   trackClick(@Param('id') id: string) {
     return this.pub.trackClick(id);
   }
+
+  @Post('advertisements/:id/whatsapp-click')
+  trackWhatsappClick(@Param('id') id: string) {
+    return this.pub.trackWhatsappClick(id);
+  }
+
+  @Post('advertisements/:id/share-click')
+  trackShareClick(@Param('id') id: string) {
+    return this.pub.trackShareClick(id);
+  }
+
+  @Post('id/:storeId/services/:serviceId/whatsapp-click')
+  trackServiceWhatsappClick(@Param('storeId') storeId: string, @Param('serviceId') serviceId: string) {
+    return this.pub.trackServiceWhatsappClick(storeId, serviceId);
+  }
+
+  @Post('id/:storeId/services/:serviceId/share-click')
+  trackServiceShareClick(@Param('storeId') storeId: string, @Param('serviceId') serviceId: string) {
+    return this.pub.trackServiceShareClick(storeId, serviceId);
+  }
 }
 

@@ -256,6 +256,7 @@ model Vehicle {
   status      VehicleStatus @default(AVAILABLE)
   isPublished Boolean       @default(false) @map("is_published")
   isClearance Boolean       @default(false) @map("is_clearance")
+  maxPublishDate DateTime?   @map("max_publish_date")
 
   brandId     String @db.Uuid
   modelId     String @db.Uuid
@@ -287,6 +288,10 @@ model Vehicle {
 
   consignorId     String? @db.Uuid @map("consignor_id")
   createdByUserId String? @db.Uuid @map("created_by_user_id")
+  
+  whatsappClicks Int      @default(0) @map("whatsapp_clicks")
+  shareClicks    Int      @default(0) @map("share_clicks")
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -804,18 +809,20 @@ model ServiceCategory {
 }
 
 model ServiceListing {
-  id          String   @id @default(uuid()) @db.Uuid
-  storeId     String   @db.Uuid
-  categoryId  String?  @db.Uuid @map("category_id")
-  name        String
-  serviceType String?  @map("service_type")
-  address     String?
-  phone       String?
-  email       String?
-  description String?
-  isPublished Boolean  @default(false) @map("is_published")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @db.Uuid
+  categoryId     String?  @db.Uuid @map("category_id")
+  name           String
+  serviceType    String?  @map("service_type")
+  address        String?
+  phone          String?
+  email          String?
+  description    String?
+  isPublished    Boolean  @default(false) @map("is_published")
+  whatsappClicks Int      @default(0) @map("whatsapp_clicks")
+  shareClicks    Int      @default(0) @map("share_clicks")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -855,8 +862,10 @@ model Advertisement {
   position  Int          @default(0)
   
   // Metrics
-  impressions Int        @default(0)
-  clicks      Int        @default(0)
+  impressions    Int        @default(0)
+  clicks         Int        @default(0)
+  whatsappClicks Int        @default(0) @map("whatsapp_clicks")
+  shareClicks    Int        @default(0) @map("share_clicks")
   
   // Randomization weights
   weight      Int        @default(1)

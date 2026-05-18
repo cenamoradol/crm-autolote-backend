@@ -176,4 +176,20 @@ export class AdvertisementsService {
       where: { id },
     });
   }
+
+  async trackWhatsappClick(storeId: string, id: string) {
+    await this.findOne(storeId, id);
+    return this.prisma.advertisement.update({
+      where: { id },
+      data: { whatsappClicks: { increment: 1 } },
+    });
+  }
+
+  async trackShareClick(storeId: string, id: string) {
+    await this.findOne(storeId, id);
+    return this.prisma.advertisement.update({
+      where: { id },
+      data: { shareClicks: { increment: 1 } },
+    });
+  }
 }

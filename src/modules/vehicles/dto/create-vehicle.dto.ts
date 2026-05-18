@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, MinLength, IsUUID } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, MinLength, IsUUID, IsDateString } from 'class-validator';
 
 export class CreateVehicleDto {
   @IsString()
@@ -97,4 +97,8 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsString()
   otherCosts?: string;
+
+  @IsOptional()
+  @IsDateString()
+  maxPublishDate?: string | null;
 }

@@ -130,6 +130,7 @@ export class VehiclesService {
         otherCosts: dto.otherCosts ? new Prisma.Decimal(dto.otherCosts) : undefined,
         isPublished: dto.isPublished ?? false,
         isClearance: dto.isClearance ?? false,
+        maxPublishDate: dto.maxPublishDate ? new Date(dto.maxPublishDate) : null,
         consignorId: dto.consignorId,
         createdByUserId: userId,
         status: 'AVAILABLE',
@@ -197,6 +198,7 @@ export class VehiclesService {
         otherCosts: dto.otherCosts ? new Prisma.Decimal(dto.otherCosts) : dto.otherCosts === null ? null : undefined,
         isPublished: typeof dto.isPublished === 'boolean' ? dto.isPublished : undefined,
         isClearance: typeof dto.isClearance === 'boolean' ? dto.isClearance : undefined,
+        maxPublishDate: dto.maxPublishDate !== undefined ? (dto.maxPublishDate ? new Date(dto.maxPublishDate) : null) : undefined,
         consignorId: dto.consignorId,
       },
     });

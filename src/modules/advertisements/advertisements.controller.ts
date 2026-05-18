@@ -73,4 +73,16 @@ export class AdvertisementsController {
   remove(@Req() req: any, @Param('id') id: string) {
     return this.advertisementsService.remove(req.storeId, id);
   }
+
+  @Post(':id/whatsapp-click')
+  @RequirePermissions('store_settings:read')
+  trackWhatsappClick(@Req() req: any, @Param('id') id: string) {
+    return this.advertisementsService.trackWhatsappClick(req.storeId, id);
+  }
+
+  @Post(':id/share-click')
+  @RequirePermissions('store_settings:read')
+  trackShareClick(@Req() req: any, @Param('id') id: string) {
+    return this.advertisementsService.trackShareClick(req.storeId, id);
+  }
 }

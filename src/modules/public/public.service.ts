@@ -12,8 +12,18 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
+    const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { storeId: store.id, isPublished: true, isClearance: false, status: { not: 'ARCHIVED' } },
+      where: { 
+        storeId: store.id, 
+        isPublished: true, 
+        isClearance: false, 
+        status: { not: 'ARCHIVED' },
+        OR: [
+          { maxPublishDate: null },
+          { maxPublishDate: { gt: now } }
+        ]
+      },
       select: {
         id: true,
         publicId: true,
@@ -52,8 +62,18 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
+    const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { storeId: store.id, isPublished: true, isClearance: false, status: { not: 'ARCHIVED' } },
+      where: { 
+        storeId: store.id, 
+        isPublished: true, 
+        isClearance: false, 
+        status: { not: 'ARCHIVED' },
+        OR: [
+          { maxPublishDate: null },
+          { maxPublishDate: { gt: now } }
+        ]
+      },
       select: {
         id: true,
         publicId: true,
@@ -92,12 +112,17 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
+    const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
       where: { 
         storeId: store.id, 
         isPublished: true, 
         isClearance: true, 
-        status: { not: 'ARCHIVED' } 
+        status: { not: 'ARCHIVED' },
+        OR: [
+          { maxPublishDate: null },
+          { maxPublishDate: { gt: now } }
+        ]
       },
       select: {
         id: true,
@@ -138,8 +163,17 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
+    const now = new Date();
     const vehicle = await this.prisma.vehicle.findFirst({
-      where: { storeId: store.id, publicId, isPublished: true },
+      where: { 
+        storeId: store.id, 
+        publicId, 
+        isPublished: true,
+        OR: [
+          { maxPublishDate: null },
+          { maxPublishDate: { gt: now } }
+        ]
+      },
       select: {
         id: true,
         publicId: true,
@@ -179,8 +213,17 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
+    const now = new Date();
     const vehicle = await this.prisma.vehicle.findFirst({
-      where: { storeId: store.id, publicId, isPublished: true },
+      where: { 
+        storeId: store.id, 
+        publicId, 
+        isPublished: true,
+        OR: [
+          { maxPublishDate: null },
+          { maxPublishDate: { gt: now } }
+        ]
+      },
       select: {
         id: true,
         publicId: true,
@@ -434,6 +477,36 @@ export class PublicService {
     return this.prisma.advertisement.update({
       where: { id: adId },
       data: { clicks: { increment: 1 } },
+    });
+  }
+
+  async trackWhatsappClick(adId: string) {
+    return this.prisma.advertisement.update({
+      where: { id: adId },
+      data: { whatsappClicks: { increment: 1 } },
+    });
+  }
+
+  async trackShareClick(adId: string) {
+    return this.prisma.advertisement.update({
+      where: { id: adId },
+      data: { shareClicks: { increment: 1 } },
+    });
+  }
+
+  // ─── Service Clicks Tracking ─────────────────────────────────────────
+
+  async trackServiceWhatsappClick(storeId: string, serviceId: string) {
+    return this.prisma.serviceListing.updateMany({
+      where: { storeId, id: serviceId },
+      data: { whatsappClicks: { increment: 1 } },
+    });
+  }
+
+  async trackServiceShareClick(storeId: string, serviceId: string) {
+    return this.prisma.serviceListing.updateMany({
+      where: { storeId, id: serviceId },
+      data: { shareClicks: { increment: 1 } },
     });
   }
 }
