@@ -82,6 +82,14 @@ model Store {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // WhatsApp Bot Configuration
+  whatsappBotPhone      String?   @map("whatsapp_bot_phone")
+  whatsappSessionData   String?   @map("whatsapp_session_data")
+  whatsappIsConnected   Boolean   @default(false) @map("whatsapp_is_connected")
+  whatsappConnectedAt   DateTime? @map("whatsapp_connected_at")
+  whatsappTimezone      String    @default("America/Mexico_City") @map("whatsapp_timezone")
+  whatsappClosedMessage String?   @map("whatsapp_closed_message")
+
   domains      StoreDomain[]
   apiKeys      StoreApiKey[]
   branches     Branch[]
@@ -108,6 +116,10 @@ model Store {
   serviceCategories ServiceCategory[]
   serviceListings ServiceListing[]
   advertisements  Advertisement[]
+
+  whatsappConversations  WhatsAppConversation[]
+  vendorAvailabilities   VendorAvailability[]
+  businessHours          WhatsAppBusinessHours[]
 
   @@index([createdAt])
 }
@@ -878,5 +890,71 @@ model Advertisement {
   @@index([storeId])
   @@index([storeId, isActive])
   @@index([storeId, placement])
+}
+
+// ─── WhatsApp Bot ────────────────────────────────────────────────
+
+enum ConversationStatus {
+  PENDING
+  ASSIGNED
+  CLOSED
+}
+
+model WhatsAppConversation {
+  id            String             @id @default(uuid()) @db.Uuid
+  storeId       String             @db.Uuid
+  customerPhone String
+  customerName  String?
+  vendorId      String?            @db.Uuid
+  vendorName    String?
+  status        ConversationStatus @default(PENDING)
+  lastMessage   String?
+  lastMessageAt DateTime?
+  assignedAt    DateTime?
+  closedAt      DateTime?
+  closedBy      String?
+  followUpSentAt DateTime?
+  followUpCount   Int              @default(0)
+  nextFollowUpAt  DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, customerPhone])
+  @@index([storeId])
+  @@index([storeId, status])
+  @@index([vendorId])
+  @@index([customerPhone])
+  @@index([nextFollowUpAt])
+}
+
+model VendorAvailability {
+  id          String   @id @default(uuid()) @db.Uuid
+  storeId     String   @db.Uuid
+  userId      String   @db.Uuid
+  userName    String
+  phone       String
+  isAvailable Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([storeId, isAvailable])
+}
+
+model WhatsAppBusinessHours {
+  id        String   @id @default(uuid()) @db.Uuid
+  storeId   String   @db.Uuid
+  dayOfWeek Int      // 0=Domingo, 1=Lunes, ..., 6=Sábado
+  openTime  String   // "09:00" (formato 24h)
+  closeTime String   // "18:00"
+  isActive  Boolean  @default(true)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, dayOfWeek])
+  @@index([storeId])
 }
 

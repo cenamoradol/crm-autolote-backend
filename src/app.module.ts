@@ -47,6 +47,12 @@ import { ServicesModule } from './modules/services/services.module';
 import { ServiceCategoriesModule } from './modules/service-categories/service-categories.module';
 import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
 
+import { WhatsAppGatewayModule } from './modules/whatsapp-gateway/whatsapp-gateway.module';
+import { VehicleSearchModule } from './modules/vehicle-search/vehicle-search.module';
+import { VendorAssignmentModule } from './modules/vendor-assignment/vendor-assignment.module';
+import { WhatsAppConfigModule } from './modules/whatsapp-config/whatsapp-config.module';
+import { WhatsAppDashboardModule } from './modules/whatsapp-dashboard/whatsapp-dashboard.module';
+
 
 const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
 
@@ -102,6 +108,12 @@ const AUDIT_ENABLED = process.env.AUDIT_ENABLED === 'true';
     ServicesModule,
     ServiceCategoriesModule,
     AdvertisementsModule,
+
+    WhatsAppGatewayModule,
+    VehicleSearchModule,
+    VendorAssignmentModule,
+    WhatsAppConfigModule,
+    WhatsAppDashboardModule,
   ],
 
   providers: [
