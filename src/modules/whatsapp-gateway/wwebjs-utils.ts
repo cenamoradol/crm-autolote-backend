@@ -177,6 +177,10 @@ export class WWebJSManager {
       return;
     }
 
+    if (!fs.existsSync(SESSION_DIR)) {
+      fs.mkdirSync(SESSION_DIR, { recursive: true });
+    }
+
     const sessionDir = path.join(SESSION_DIR, storeId);
     if (!fs.existsSync(sessionDir)) {
       console.log(`[WWebJS] No session files found for ${storeId}`);
