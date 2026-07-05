@@ -6,6 +6,19 @@ import * as os from 'os';
 const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR || './whatsapp-sessions';
 
 function findChromeExecutable(): string | undefined {
+  // 1. Prefer the Chromium downloaded by puppeteer during npm install
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const puppeteer = require('puppeteer');
+    const puppeteerPath = puppeteer.executablePath();
+    if (puppeteerPath && fs.existsSync(puppeteerPath)) {
+      return puppeteerPath;
+    }
+  } catch {
+    // puppeteer package not available, continue with other options
+  }
+
+  // 2. Explicit environment override
   if (process.env.CHROME_PATH) {
     return process.env.CHROME_PATH;
   }
