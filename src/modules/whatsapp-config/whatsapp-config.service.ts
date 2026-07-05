@@ -47,6 +47,11 @@ export class WhatsAppConfigService {
     return { qr: result.qr };
   }
 
+  async generateQRWithPhone(storeId: string, phone: string) {
+    const result = await this.gatewayService.generateQRWithPhone(storeId, phone);
+    return { qr: result.qr };
+  }
+
   async updateSettings(
     storeId: string,
     data: {

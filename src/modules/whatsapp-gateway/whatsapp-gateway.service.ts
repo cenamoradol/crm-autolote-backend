@@ -119,6 +119,12 @@ export class WhatsAppGatewayService implements OnModuleInit, OnModuleDestroy {
     return qr;
   }
 
+  async generateQRWithPhone(storeId: string, phone: string) {
+    const qr = await this.sessionService.generateQRWithPhone(storeId, phone);
+    this.setupMessageHandler(storeId);
+    return qr;
+  }
+
   async disconnect(storeId: string) {
     await this.sessionService.markDisconnected(storeId);
   }

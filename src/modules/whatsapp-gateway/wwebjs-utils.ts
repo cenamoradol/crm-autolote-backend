@@ -1,8 +1,59 @@
 import { Client, LocalAuth, Message, Chat, MessageMedia } from 'whatsapp-web.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR || './whatsapp-sessions';
+
+function findChromeExecutable(): string | undefined {
+  if (process.env.CHROME_PATH) {
+    return process.env.CHROME_PATH;
+  }
+
+  const platform = os.platform();
+
+  if (platform === 'win32') {
+    const candidates = [
+      path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(process.env.PROGRAMFILES || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Chromium', 'Application', 'chrome.exe'),
+      path.join(process.env.PROGRAMFILES || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(process.env['PROGRAMFILES(X86)'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  } else if (platform === 'darwin') {
+    const candidates = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  } else {
+    const candidates = [
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/snap/bin/chromium',
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+}
 
 export function parseMessage(text: string): { brand?: string; model?: string; year?: string } {
   const n = text.trim().toLowerCase();
@@ -71,7 +122,7 @@ export class WWebJSManager {
       }),
       puppeteer: {
         headless: true,
-        executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+        executablePath: findChromeExecutable(),
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
     });
@@ -200,7 +251,7 @@ export class WWebJSManager {
       }),
       puppeteer: {
         headless: true,
-        executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+        executablePath: findChromeExecutable(),
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
     });

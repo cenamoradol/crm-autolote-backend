@@ -36,9 +36,9 @@ export class WhatsAppSessionService {
         });
       },
       onQRUpdated: (qr: string) => {
-        console.log(`[WhatsApp Session] QR updated`);
+        console.log(`[WhatsApp Session] QR updated: ${qr}`);
         if (qrResolve) {
-          qrResolve({ qr, expiresAt: Date.now() + 120000 });
+          qrResolve({ qr, expiresAt: Date.now() + 300000 });
           qrResolve = null;
         }
       },
@@ -59,13 +59,17 @@ export class WhatsAppSessionService {
     try {
       const qr = await Promise.race([
         qrPromise,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QR timeout')), 180000))
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QR code timeout. Please try again.')), 300000))
       ]);
       return qr;
     } catch (error) {
       await wwebjsManager.disconnect(storeId);
       throw error;
     }
+  }
+
+  async generateQRWithPhone(storeId: string, phoneNumber: string): Promise<WhatsAppQR> {
+    return this.generateQR(storeId);
   }
 
   async getSessionStatus(storeId: string) {

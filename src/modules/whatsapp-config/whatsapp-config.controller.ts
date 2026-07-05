@@ -39,6 +39,12 @@ export class WhatsAppConfigController {
     return this.configService.generateQR(req.storeId);
   }
 
+  @Post('qr/phone')
+  @RequirePermissions('whatsapp:update')
+  async generateQRWithPhone(@Req() req: any, @Body() body: { phone: string }) {
+    return this.configService.generateQRWithPhone(req.storeId, body.phone);
+  }
+
   @Post('disconnect')
   @RequirePermissions('whatsapp:update')
   async disconnect(@Req() req: any) {
