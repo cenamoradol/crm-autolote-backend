@@ -4,6 +4,49 @@ import * as path from 'path';
 import * as os from 'os';
 
 const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR || './whatsapp-sessions';
+const QR_TIMEOUT_MS = parseInt(process.env.WHATSAPP_QR_TIMEOUT_MS || '300000', 10);
+
+function getPuppeteerArgs(): string[] {
+  return [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--disable-gpu',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--disable-extensions',
+    '--disable-sync',
+    '--disable-translate',
+    '--no-first-run',
+    '--no-zygote',
+    '--single-process',
+    '--memory-model=low',
+    '--max_old_space_size=512',
+    '--disable-features=site-per-process,TranslateUI',
+    '--disable-blink-features=AutomationControlled',
+    '--window-size=1280,720',
+  ];
+}
+
+function getClientOptions(sessionDir: string) {
+  return {
+    authStrategy: new LocalAuth({
+      dataPath: sessionDir,
+    }),
+    puppeteer: {
+      headless: true,
+      executablePath: findChromeExecutable(),
+      args: getPuppeteerArgs(),
+      dumpio: process.env.PUPPETEER_DUMPIO === 'true',
+    },
+    webVersionCache: {
+      type: 'local' as const,
+    },
+    takeoverOnConflict: true,
+    takeoverTimeoutMs: 0,
+  };
+}
 
 function findChromeExecutable(): string | undefined {
   console.log('[ChromeFinder] Starting Chrome executable search...');
@@ -138,16 +181,7 @@ export class WWebJSManager {
 
     console.log(`[WWebJS] Creating session for ${storeId}`);
 
-    const client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: sessionDir,
-      }),
-      puppeteer: {
-        headless: true,
-        executablePath: findChromeExecutable(),
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      },
-    });
+    const client = new Client(getClientOptions(sessionDir));
 
     this.clients.set(storeId, client);
 
@@ -194,11 +228,26 @@ export class WWebJSManager {
     });
 
     return new Promise((resolve) => {
+      let resolved = false;
+      const timeoutMs = QR_TIMEOUT_MS;
+
+      const cleanupTimeout = () => {
+        clearTimeout(timeoutHandle);
+      };
+
+      const safeResolve = (value: { qr?: WhatsAppQR; error?: string }) => {
+        if (!resolved) {
+          resolved = true;
+          cleanupTimeout();
+          resolve(value);
+        }
+      };
+
       client.on('qr', (qr) => {
         console.log(`[WWebJS] QR received for ${storeId}`);
         this.qrCodes.set(storeId, qr);
         callbacks?.onQRUpdated?.(qr);
-        resolve({ qr: { qr, expiresAt: Date.now() + 120000 } });
+        safeResolve({ qr: { qr, expiresAt: Date.now() + 120000 } });
       });
 
       client.on('ready', () => {
@@ -215,7 +264,7 @@ export class WWebJSManager {
         console.error(`[WWebJS] Auth failure for ${storeId}:`, error);
         callbacks?.onError?.(error as string);
         this.forceDisconnect(storeId);
-        resolve({ error: `Auth failure: ${error}` });
+        safeResolve({ error: `Auth failure: ${error}` });
       });
 
       client.on('disconnected', (reason) => {
@@ -223,25 +272,26 @@ export class WWebJSManager {
         this.clients.delete(storeId);
         this.qrCodes.delete(storeId);
         callbacks?.onDisconnected?.();
+        safeResolve({ error: `Disconnected: ${reason}` });
       });
 
       client.on('change_state', (state) => {
         console.log(`[WWebJS] State change for ${storeId}:`, state);
       });
 
+      const timeoutHandle = setTimeout(() => {
+        if (!resolved && !this.qrCodes.has(storeId) && !this.clients.get(storeId)?.info) {
+          console.log(`[WWebJS] Timeout waiting for QR for ${storeId} after ${timeoutMs}ms`);
+          this.forceDisconnect(storeId);
+          safeResolve({ error: 'Timeout waiting for QR' });
+        }
+      }, timeoutMs);
+
       client.initialize().catch((error) => {
         console.error(`[WWebJS] Initialize error for ${storeId}:`, error);
         this.forceDisconnect(storeId);
-        resolve({ error: (error as Error).message });
+        safeResolve({ error: (error as Error).message });
       });
-
-      setTimeout(() => {
-        if (!this.qrCodes.has(storeId) && !this.clients.get(storeId)?.info) {
-          console.log(`[WWebJS] Timeout waiting for QR for ${storeId}`);
-          this.forceDisconnect(storeId);
-          resolve({ error: 'Timeout waiting for QR' });
-        }
-      }, 180000);
     });
   }
 
@@ -267,16 +317,7 @@ export class WWebJSManager {
       this.callbacks.set(storeId, callbacks);
     }
 
-    const client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: sessionDir,
-      }),
-      puppeteer: {
-        headless: true,
-        executablePath: findChromeExecutable(),
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      },
-    });
+    const client = new Client(getClientOptions(sessionDir));
 
     this.clients.set(storeId, client);
 
