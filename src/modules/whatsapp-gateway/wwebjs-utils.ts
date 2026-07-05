@@ -6,27 +6,40 @@ import * as os from 'os';
 const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR || './whatsapp-sessions';
 
 function findChromeExecutable(): string | undefined {
-  // 1. Prefer the Chromium downloaded by puppeteer during npm install
+  console.log('[ChromeFinder] Starting Chrome executable search...');
+  console.log(`[ChromeFinder] Platform: ${os.platform()}`);
+  console.log(`[ChromeFinder] PUPPETEER_CACHE_DIR: ${process.env.PUPPETEER_CACHE_DIR || '(not set)'}`);
+  console.log(`[ChromeFinder] CHROME_PATH: ${process.env.CHROME_PATH || '(not set)'}`);
+
+  // 1. Prefer the Chromium downloaded by puppeteer during npm install / build
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const puppeteer = require('puppeteer');
     const puppeteerPath = puppeteer.executablePath();
+    console.log(`[ChromeFinder] Puppeteer executablePath: ${puppeteerPath}`);
     if (puppeteerPath && fs.existsSync(puppeteerPath)) {
+      console.log(`[ChromeFinder] Using Puppeteer Chrome: ${puppeteerPath}`);
       return puppeteerPath;
     }
-  } catch {
-    // puppeteer package not available, continue with other options
+    console.log('[ChromeFinder] Puppeteer Chrome not found at expected path.');
+  } catch (err) {
+    console.log('[ChromeFinder] Puppeteer package not available:', (err as Error).message);
   }
 
   // 2. Explicit environment override
   if (process.env.CHROME_PATH) {
-    return process.env.CHROME_PATH;
+    console.log(`[ChromeFinder] Using CHROME_PATH: ${process.env.CHROME_PATH}`);
+    if (fs.existsSync(process.env.CHROME_PATH)) {
+      return process.env.CHROME_PATH;
+    }
+    console.log('[ChromeFinder] CHROME_PATH file does not exist.');
   }
 
   const platform = os.platform();
+  let candidates: string[] = [];
 
   if (platform === 'win32') {
-    const candidates = [
+    candidates = [
       path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
       path.join(process.env.PROGRAMFILES || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
       path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
@@ -34,37 +47,33 @@ function findChromeExecutable(): string | undefined {
       path.join(process.env.PROGRAMFILES || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
       path.join(process.env['PROGRAMFILES(X86)'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
     ];
-    for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) {
-        return candidate;
-      }
-    }
   } else if (platform === 'darwin') {
-    const candidates = [
+    candidates = [
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
       '/Applications/Chromium.app/Contents/MacOS/Chromium',
     ];
-    for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) {
-        return candidate;
-      }
-    }
   } else {
-    const candidates = [
+    candidates = [
       '/usr/bin/chromium-browser',
       '/usr/bin/chromium',
       '/usr/bin/google-chrome',
       '/usr/bin/google-chrome-stable',
       '/snap/bin/chromium',
     ];
-    for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) {
-        return candidate;
-      }
+  }
+
+  console.log(`[ChromeFinder] Checking OS candidates: ${candidates.join(', ')}`);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      console.log(`[ChromeFinder] Using OS Chrome: ${candidate}`);
+      return candidate;
     }
   }
 
+  console.error('[ChromeFinder] No Chrome executable found. WhatsApp Web will not work.');
+  console.error('[ChromeFinder] On Render, ensure build command includes: npx puppeteer browsers install chrome');
+  console.error('[ChromeFinder] On Render, set env var: PUPPETEER_CACHE_DIR=/opt/render/project/src/.cache/puppeteer');
   return undefined;
 }
 
