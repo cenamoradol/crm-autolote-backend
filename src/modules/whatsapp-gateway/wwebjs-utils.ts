@@ -7,26 +7,34 @@ const SESSION_DIR = process.env.WHATSAPP_SESSION_DIR || './whatsapp-sessions';
 const QR_TIMEOUT_MS = parseInt(process.env.WHATSAPP_QR_TIMEOUT_MS || '300000', 10);
 
 function getPuppeteerArgs(): string[] {
-  return [
+  const args = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
     '--disable-accelerated-2d-canvas',
     '--disable-gpu',
     '--disable-background-networking',
+    '--disable-background-timer-throttling',
     '--disable-default-apps',
     '--disable-extensions',
+    '--disable-renderer-backgrounding',
     '--disable-sync',
     '--disable-translate',
     '--no-first-run',
-    '--no-zygote',
-    '--single-process',
+    '--renderer-process-limit=2',
     '--memory-model=low',
     '--max_old_space_size=512',
     '--disable-features=site-per-process,TranslateUI',
     '--disable-blink-features=AutomationControlled',
     '--window-size=1280,720',
   ];
+
+  // --single-process saves memory but is unstable; enable only via env var.
+  if (process.env.PUPPETEER_SINGLE_PROCESS === 'true') {
+    args.push('--single-process', '--no-zygote');
+  }
+
+  return args;
 }
 
 function getClientOptions(sessionDir: string) {
@@ -39,9 +47,6 @@ function getClientOptions(sessionDir: string) {
       executablePath: findChromeExecutable(),
       args: getPuppeteerArgs(),
       dumpio: process.env.PUPPETEER_DUMPIO === 'true',
-    },
-    webVersionCache: {
-      type: 'local' as const,
     },
     takeoverOnConflict: true,
     takeoverTimeoutMs: 0,
@@ -165,8 +170,31 @@ export class WWebJSManager {
   private messageHandlers: Map<string, (from: string, text: string, timestamp: Date, rawFrom?: string) => void> = new Map();
 
   async createSession(storeId: string, callbacks?: ConnectionCallbacks): Promise<{ qr?: WhatsAppQR; error?: string }> {
+    const maxAttempts = parseInt(process.env.WHATSAPP_CREATE_SESSION_RETRIES || '2', 10);
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`[WWebJS] Creating session for ${storeId} (attempt ${attempt}/${maxAttempts})`);
+      const result = await this.tryCreateSession(storeId, callbacks);
+
+      if (!result.error) {
+        return result;
+      }
+
+      console.log(`[WWebJS] Session creation attempt ${attempt} failed for ${storeId}: ${result.error}`);
+
+      if (attempt < maxAttempts) {
+        const delayMs = 2000 * attempt;
+        console.log(`[WWebJS] Retrying session creation for ${storeId} in ${delayMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    return { error: `Failed to create session after ${maxAttempts} attempts` };
+  }
+
+  private async tryCreateSession(storeId: string, callbacks?: ConnectionCallbacks): Promise<{ qr?: WhatsAppQR; error?: string }> {
     const sessionDir = path.join(SESSION_DIR, storeId);
-    
+
     if (this.clients.has(storeId)) {
       await this.forceDisconnect(storeId);
     }
@@ -178,8 +206,6 @@ export class WWebJSManager {
     if (callbacks) {
       this.callbacks.set(storeId, callbacks);
     }
-
-    console.log(`[WWebJS] Creating session for ${storeId}`);
 
     const client = new Client(getClientOptions(sessionDir));
 
@@ -206,7 +232,7 @@ export class WWebJSManager {
 
       const from = msg.from;
       let fromNumber = from.replace('@c.us', '').replace('@g.us', '').replace('@lid', '').replace(/\D/g, '');
-      
+
       if (!fromNumber || fromNumber.length < 8) {
         console.log(`[WWebJS] Ignoring invalid contact: ${from}`);
         return;
