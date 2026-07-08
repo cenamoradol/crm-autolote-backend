@@ -7,6 +7,7 @@ import { LicenseGuard } from '../../common/guards/license.guard';
 import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { QuickSaleDto } from './dto/quick-sale.dto';
 import { VehicleStatus } from '@prisma/client';
 
 @Controller('vehicles')
@@ -55,5 +56,11 @@ export class VehiclesController {
   @RequirePermissions('inventory:delete')
   archive(@Req() req: any, @Param('id') id: string) {
     return this.vehicles.archive(req.storeId, req.user.sub, id);
+  }
+
+  @Post(':id/quick-sale')
+  @RequirePermissions('sales:quick_sell')
+  quickSale(@Req() req: any, @Param('id') id: string, @Body() dto: QuickSaleDto) {
+    return this.vehicles.quickSale(req.storeId, req.user.sub, id, dto);
   }
 }

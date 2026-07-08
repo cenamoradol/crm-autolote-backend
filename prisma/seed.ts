@@ -140,7 +140,7 @@ async function main() {
   const defaultPermissions = {
     admin: {
       inventory: ['read', 'create', 'update', 'delete'],
-      sales: ['read', 'create', 'update', 'delete'],
+      sales: ['read', 'create', 'update', 'delete', 'quick_sell'],
       customers: ['read', 'create', 'update', 'delete'],
       leads: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all', 'assign_all'],
       activities: ['read', 'create', 'update', 'delete', 'read_all', 'update_all', 'delete_all'],

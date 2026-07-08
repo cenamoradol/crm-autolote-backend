@@ -23,6 +23,12 @@ export class WhatsAppConfigService {
           whatsappConnectedAt: true,
           whatsappTimezone: true,
           whatsappClosedMessage: true,
+          whatsappWelcomeMessage: true,
+          whatsappFallbackMessage: true,
+          whatsappVendorRequestMessage: true,
+          whatsappNoVendorsMessage: true,
+          whatsappVehicleSelectionMessage: true,
+          whatsappSearchPromptMessage: true,
         },
       }),
       this.vendorService.getVendors(storeId),
@@ -36,6 +42,12 @@ export class WhatsAppConfigService {
       connectedAt: store?.whatsappConnectedAt,
       timezone: store?.whatsappTimezone ?? 'America/Mexico_City',
       closedMessage: store?.whatsappClosedMessage,
+      welcomeMessage: store?.whatsappWelcomeMessage,
+      fallbackMessage: store?.whatsappFallbackMessage,
+      vendorRequestMessage: store?.whatsappVendorRequestMessage,
+      noVendorsMessage: store?.whatsappNoVendorsMessage,
+      vehicleSelectionMessage: store?.whatsappVehicleSelectionMessage,
+      searchPromptMessage: store?.whatsappSearchPromptMessage,
       status,
       vendors,
       businessHours,
@@ -57,11 +69,23 @@ export class WhatsAppConfigService {
     data: {
       timezone?: string;
       closedMessage?: string;
+      welcomeMessage?: string;
+      fallbackMessage?: string;
+      vendorRequestMessage?: string;
+      noVendorsMessage?: string;
+      vehicleSelectionMessage?: string;
+      searchPromptMessage?: string;
     },
   ) {
     const updateData: any = {};
     if (data.timezone !== undefined) updateData.whatsappTimezone = data.timezone;
     if (data.closedMessage !== undefined) updateData.whatsappClosedMessage = data.closedMessage;
+    if (data.welcomeMessage !== undefined) updateData.whatsappWelcomeMessage = data.welcomeMessage;
+    if (data.fallbackMessage !== undefined) updateData.whatsappFallbackMessage = data.fallbackMessage;
+    if (data.vendorRequestMessage !== undefined) updateData.whatsappVendorRequestMessage = data.vendorRequestMessage;
+    if (data.noVendorsMessage !== undefined) updateData.whatsappNoVendorsMessage = data.noVendorsMessage;
+    if (data.vehicleSelectionMessage !== undefined) updateData.whatsappVehicleSelectionMessage = data.vehicleSelectionMessage;
+    if (data.searchPromptMessage !== undefined) updateData.whatsappSearchPromptMessage = data.searchPromptMessage;
 
     if (Object.keys(updateData).length > 0) {
       await this.prisma.store.update({

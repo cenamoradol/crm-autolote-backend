@@ -69,18 +69,16 @@ enum AdPlacement {
   FLOATING_BOTTOM
 }
 
-
-
 model Store {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String   @unique
-  logoUrl     String?  @map("logo_url")
-  isActive    Boolean  @default(true)
-  currency    String   @default("USD")
-  currencySymbol String @default("$") @map("currency_symbol")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  slug           String   @unique
+  logoUrl        String?  @map("logo_url")
+  isActive       Boolean  @default(true)
+  currency       String   @default("USD")
+  currencySymbol String   @default("$") @map("currency_symbol")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // WhatsApp Bot Configuration
   whatsappBotPhone      String?   @map("whatsapp_bot_phone")
@@ -90,36 +88,44 @@ model Store {
   whatsappTimezone      String    @default("America/Mexico_City") @map("whatsapp_timezone")
   whatsappClosedMessage String?   @map("whatsapp_closed_message")
 
-  domains      StoreDomain[]
-  apiKeys      StoreApiKey[]
-  branches     Branch[]
-  memberships  UserRole[]
+  // Configurable bot messages
+  whatsappWelcomeMessage          String? @map("whatsapp_welcome_message")
+  whatsappFallbackMessage         String? @map("whatsapp_fallback_message")
+  whatsappVendorRequestMessage    String? @map("whatsapp_vendor_request_message")
+  whatsappNoVendorsMessage        String? @map("whatsapp_no_vendors_message")
+  whatsappVehicleSelectionMessage String? @map("whatsapp_vehicle_selection_message")
+  whatsappSearchPromptMessage     String? @map("whatsapp_search_prompt_message")
 
-  vehicles     Vehicle[]
-  customers    Customer[]
-  leads        Lead[]
-  activities   Activity[]
-  sales        VehicleSale[]
+  domains     StoreDomain[]
+  apiKeys     StoreApiKey[]
+  branches    Branch[]
+  memberships UserRole[]
+
+  vehicles   Vehicle[]
+  customers  Customer[]
+  leads      Lead[]
+  activities Activity[]
+  sales      VehicleSale[]
 
   subscriptions StoreSubscription[]
 
-  vehicleReservations  VehicleReservation[]
-  leadPreferences      LeadPreference[]
-  customerPreferences  CustomerPreference[]
+  vehicleReservations VehicleReservation[]
+  leadPreferences     LeadPreference[]
+  customerPreferences CustomerPreference[]
 
-  auditLogs    AuditLog[]
-  consignors   Consignor[]
+  auditLogs      AuditLog[]
+  consignors     Consignor[]
   permissionSets PermissionSet[]
 
-  eventCategories EventCategory[]
-  events          Event[]
+  eventCategories   EventCategory[]
+  events            Event[]
   serviceCategories ServiceCategory[]
-  serviceListings ServiceListing[]
-  advertisements  Advertisement[]
+  serviceListings   ServiceListing[]
+  advertisements    Advertisement[]
 
-  whatsappConversations  WhatsAppConversation[]
-  vendorAvailabilities   VendorAvailability[]
-  businessHours          WhatsAppBusinessHours[]
+  whatsappConversations WhatsAppConversation[]
+  vendorAvailabilities  VendorAvailability[]
+  businessHours         WhatsAppBusinessHours[]
 
   @@index([createdAt])
 }
@@ -137,12 +143,12 @@ model StoreDomain {
 }
 
 model StoreApiKey {
-  id          String   @id @default(uuid()) @db.Uuid
-  storeId     String   @db.Uuid
-  name        String
-  keyHash     String   @map("key_hash")
-  lastUsedAt  DateTime? @map("last_used_at")
-  createdAt   DateTime @default(now())
+  id         String    @id @default(uuid()) @db.Uuid
+  storeId    String    @db.Uuid
+  name       String
+  keyHash    String    @map("key_hash")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt  DateTime  @default(now())
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -159,7 +165,7 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   vehicles Vehicle[]
 
   @@index([storeId])
@@ -178,19 +184,19 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships   UserRole[]
-  refreshTokens RefreshToken[]
-  resetToken          String?   @map("reset_token")
-  resetTokenExpiresAt DateTime? @map("reset_token_expires_at")
+  memberships         UserRole[]
+  refreshTokens       RefreshToken[]
+  resetToken          String?        @map("reset_token")
+  resetTokenExpiresAt DateTime?      @map("reset_token_expires_at")
 
-  createdVehicles  Vehicle[]              @relation("VehicleCreatedBy")
-  changedStatuses  VehicleStatusHistory[] @relation("VehicleStatusChangedBy")
-  reservedVehicles VehicleReservation[]   @relation("VehicleReservedBy")
-  activities       Activity[]             @relation("ActivityCreatedBy")
-  soldSales        VehicleSale[]          @relation("VehicleSoldBy")
-  createdSales     VehicleSale[]          @relation("VehicleSaleCreatedBy")
-  createdCustomers Customer[]             @relation("CustomerCreatedBy")
-  createdConsignors Consignor[]           @relation("ConsignorCreatedBy")
+  createdVehicles   Vehicle[]              @relation("VehicleCreatedBy")
+  changedStatuses   VehicleStatusHistory[] @relation("VehicleStatusChangedBy")
+  reservedVehicles  VehicleReservation[]   @relation("VehicleReservedBy")
+  activities        Activity[]             @relation("ActivityCreatedBy")
+  soldSales         VehicleSale[]          @relation("VehicleSoldBy")
+  createdSales      VehicleSale[]          @relation("VehicleSaleCreatedBy")
+  createdCustomers  Customer[]             @relation("CustomerCreatedBy")
+  createdConsignors Consignor[]            @relation("ConsignorCreatedBy")
 
   assignedLeads Lead[] @relation("LeadAssignedTo")
 
@@ -202,14 +208,14 @@ model User {
 }
 
 model UserRole {
-  id      String @id @default(uuid()) @db.Uuid
-  userId  String @db.Uuid
-  storeId String @db.Uuid
-  permissions Json?
-  permissionSetId String? @db.Uuid @map("permission_set_id")
+  id              String  @id @default(uuid()) @db.Uuid
+  userId          String  @db.Uuid
+  storeId         String  @db.Uuid
+  permissions     Json?
+  permissionSetId String? @map("permission_set_id") @db.Uuid
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   permissionSet PermissionSet? @relation(fields: [permissionSetId], references: [id], onDelete: SetNull)
 
   @@unique([userId, storeId])
@@ -217,9 +223,9 @@ model UserRole {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  tokenHash String   @map("token_hash")
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @map("token_hash")
   revokedAt DateTime? @map("revoked_at")
   expiresAt DateTime  @map("expires_at")
   createdAt DateTime  @default(now())
@@ -250,7 +256,7 @@ model Model {
   name      String
   createdAt DateTime @default(now())
 
-  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand    Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   vehicles Vehicle[]
 
   leadPreferences     LeadPreference[]     @relation("LeadPreferenceDesiredModel")
@@ -261,61 +267,61 @@ model Model {
 }
 
 model Vehicle {
-  id          String        @id @default(uuid()) @db.Uuid
-  storeId     String        @db.Uuid
-  branchId    String        @db.Uuid
-  publicId    String        @map("public_id")
-  status      VehicleStatus @default(AVAILABLE)
-  isPublished Boolean       @default(false) @map("is_published")
-  isClearance Boolean       @default(false) @map("is_clearance")
-  maxPublishDate DateTime?   @map("max_publish_date")
+  id             String        @id @default(uuid()) @db.Uuid
+  storeId        String        @db.Uuid
+  branchId       String        @db.Uuid
+  publicId       String        @map("public_id")
+  status         VehicleStatus @default(AVAILABLE)
+  isPublished    Boolean       @default(false) @map("is_published")
+  isClearance    Boolean       @default(false) @map("is_clearance")
+  maxPublishDate DateTime?     @map("max_publish_date")
 
-  brandId     String @db.Uuid
-  modelId     String @db.Uuid
-  vehicleTypeId String? @db.Uuid @map("vehicle_type_id")
+  brandId       String  @db.Uuid
+  modelId       String  @db.Uuid
+  vehicleTypeId String? @map("vehicle_type_id") @db.Uuid
 
-  title       String?
-  description String?
-  year        Int?
-  price       Decimal? @db.Decimal(12, 2)
-  offerPrice  Decimal? @db.Decimal(12, 2) @map("offer_price")
-  clearancePrice Decimal? @db.Decimal(12, 2) @map("clearance_price")
-  mileage     Int?
-  vin         String?
-  plate       String?
-  stockNumber String?  @map("stock_number")
-  colorId     String?  @db.Uuid @map("color_id")
-  transmission String?
-  engineSize   Float?   @map("engine_size")
-  fuelType     String? @map("fuel_type")
+  title          String?
+  description    String?
+  year           Int?
+  price          Decimal? @db.Decimal(12, 2)
+  offerPrice     Decimal? @map("offer_price") @db.Decimal(12, 2)
+  clearancePrice Decimal? @map("clearance_price") @db.Decimal(12, 2)
+  mileage        Int?
+  vin            String?
+  plate          String?
+  stockNumber    String?  @map("stock_number")
+  colorId        String?  @map("color_id") @db.Uuid
+  transmission   String?
+  engineSize     Float?   @map("engine_size")
+  fuelType       String?  @map("fuel_type")
 
-  soldAt      DateTime? @map("sold_at")
-  soldPrice   Decimal?  @db.Decimal(12, 2) @map("sold_price")
+  soldAt    DateTime? @map("sold_at")
+  soldPrice Decimal?  @map("sold_price") @db.Decimal(12, 2)
 
   // Administrative Costs
-  purchasePrice  Decimal?  @db.Decimal(12, 2) @map("purchase_price")
-  repairCosts    Decimal?  @db.Decimal(12, 2) @map("repair_costs")
-  paperworkCosts Decimal?  @db.Decimal(12, 2) @map("paperwork_costs")
-  otherCosts     Decimal?  @db.Decimal(12, 2) @map("other_costs")
+  purchasePrice  Decimal? @map("purchase_price") @db.Decimal(12, 2)
+  repairCosts    Decimal? @map("repair_costs") @db.Decimal(12, 2)
+  paperworkCosts Decimal? @map("paperwork_costs") @db.Decimal(12, 2)
+  otherCosts     Decimal? @map("other_costs") @db.Decimal(12, 2)
 
-  consignorId     String? @db.Uuid @map("consignor_id")
-  createdByUserId String? @db.Uuid @map("created_by_user_id")
-  
-  whatsappClicks Int      @default(0) @map("whatsapp_clicks")
-  shareClicks    Int      @default(0) @map("share_clicks")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  consignorId     String? @map("consignor_id") @db.Uuid
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
 
-  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  branch  Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Restrict)
-  model   Model  @relation(fields: [modelId], references: [id], onDelete: Restrict)
-  colorRef Color? @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  whatsappClicks Int @default(0) @map("whatsapp_clicks")
+  shareClicks    Int @default(0) @map("share_clicks")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  brand       Brand        @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  model       Model        @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  colorRef    Color?       @relation(fields: [colorId], references: [id], onDelete: SetNull)
   vehicleType VehicleType? @relation(fields: [vehicleTypeId], references: [id], onDelete: SetNull)
 
   consignor Consignor? @relation(fields: [consignorId], references: [id], onDelete: SetNull)
-  createdBy User? @relation("VehicleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy User?      @relation("VehicleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   media         VehicleMedia[]
   statusHistory VehicleStatusHistory[]
@@ -327,13 +333,13 @@ model Vehicle {
   eventVehicles EventVehicle[]
 
   @@unique([storeId, publicId])
+  @@unique([storeId, vin], map: "vehicle_store_vin_unique")
   @@index([storeId, branchId])
   @@index([storeId, isPublished])
   @@index([storeId, status])
   @@index([brandId])
   @@index([modelId])
   @@index([storeId, createdAt])
-  @@unique([storeId, vin], map: "vehicle_store_vin_unique")
 }
 
 model VehicleMedia {
@@ -341,10 +347,10 @@ model VehicleMedia {
   vehicleId String    @db.Uuid
   kind      MediaKind @default(IMAGE)
 
-  fileKey   String    @map("file_key")
-  url       String
-  position  Int       @default(0)
-  isCover   Boolean   @default(false) @map("is_cover")
+  fileKey  String  @map("file_key")
+  url      String
+  position Int     @default(0)
+  isCover  Boolean @default(false) @map("is_cover")
 
   createdAt DateTime @default(now())
 
@@ -355,12 +361,12 @@ model VehicleMedia {
 }
 
 model VehicleStatusHistory {
-  id         String        @id @default(uuid()) @db.Uuid
-  vehicleId  String        @db.Uuid
-  fromStatus VehicleStatus @map("from_status")
-  toStatus   VehicleStatus @map("to_status")
-  changedByUserId String?  @db.Uuid @map("changed_by_user_id")
-  changedAt  DateTime      @default(now()) @map("changed_at")
+  id              String        @id @default(uuid()) @db.Uuid
+  vehicleId       String        @db.Uuid
+  fromStatus      VehicleStatus @map("from_status")
+  toStatus        VehicleStatus @map("to_status")
+  changedByUserId String?       @map("changed_by_user_id") @db.Uuid
+  changedAt       DateTime      @default(now()) @map("changed_at")
 
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   changedBy User?   @relation("VehicleStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
@@ -370,21 +376,21 @@ model VehicleStatusHistory {
 }
 
 model VehicleReservation {
-  id        String   @id @default(uuid()) @db.Uuid
-  storeId   String   @db.Uuid
-  vehicleId String   @unique @db.Uuid
+  id        String @id @default(uuid()) @db.Uuid
+  storeId   String @db.Uuid
+  vehicleId String @unique @db.Uuid
 
-  reservedByUserId String? @db.Uuid @map("reserved_by_user_id")
-  customerId String? @db.Uuid @map("customer_id")
-  leadId     String? @db.Uuid @map("lead_id")
+  reservedByUserId String? @map("reserved_by_user_id") @db.Uuid
+  customerId       String? @map("customer_id") @db.Uuid
+  leadId           String? @map("lead_id") @db.Uuid
 
-  reservedAt DateTime @default(now()) @map("reserved_at")
+  reservedAt DateTime  @default(now()) @map("reserved_at")
   expiresAt  DateTime? @map("expires_at")
   notes      String?
 
-  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  reservedBy User?  @relation("VehicleReservedBy", fields: [reservedByUserId], references: [id], onDelete: SetNull)
+  store      Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  reservedBy User?   @relation("VehicleReservedBy", fields: [reservedByUserId], references: [id], onDelete: SetNull)
 
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -394,16 +400,16 @@ model VehicleReservation {
 }
 
 model Customer {
-  id         String         @id @default(uuid()) @db.Uuid
-  storeId    String         @db.Uuid
-  fullName   String         @map("full_name")
-  phone      String?
-  email      String?
-  documentId String?        @map("document_id")
-  status     CustomerStatus @default(ACTIVE)
-  createdByUserId String?   @db.Uuid @map("created_by_user_id")
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id              String         @id @default(uuid()) @db.Uuid
+  storeId         String         @db.Uuid
+  fullName        String         @map("full_name")
+  phone           String?
+  email           String?
+  documentId      String?        @map("document_id")
+  status          CustomerStatus @default(ACTIVE)
+  createdByUserId String?        @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   store     Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
   createdBy User? @relation("CustomerCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -415,53 +421,53 @@ model Customer {
 
   reservations VehicleReservation[]
 
-  @@index([storeId])
-  @@index([storeId, createdAt])
   @@unique([storeId, phone], map: "customer_store_phone_unique")
   @@unique([storeId, email], map: "customer_store_email_unique")
+  @@index([storeId])
+  @@index([storeId, createdAt])
 }
 
 model CustomerPreference {
-  id         String  @id @default(uuid()) @db.Uuid
-  storeId    String  @db.Uuid
-  customerId String  @db.Uuid @map("customer_id")
-  brandId    String? @db.Uuid @map("brand_id")
-  modelId    String? @db.Uuid @map("model_id")
-  yearFrom   Int?    @map("year_from")
-  yearTo     Int?    @map("year_to")
-  minPrice   Decimal? @db.Decimal(12, 2) @map("min_price")
-  maxPrice   Decimal? @db.Decimal(12, 2) @map("max_price")
-  isActive   Boolean @default(true) @map("is_active")
+  id         String   @id @default(uuid()) @db.Uuid
+  storeId    String   @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  brandId    String?  @map("brand_id") @db.Uuid
+  modelId    String?  @map("model_id") @db.Uuid
+  yearFrom   Int?     @map("year_from")
+  yearTo     Int?     @map("year_to")
+  minPrice   Decimal? @map("min_price") @db.Decimal(12, 2)
+  maxPrice   Decimal? @map("max_price") @db.Decimal(12, 2)
+  isActive   Boolean  @default(true) @map("is_active")
   notes      String?
   createdAt  DateTime @default(now())
 
-  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  brand    Brand?    @relation("CustomerPreferenceBrand", fields: [brandId], references: [id], onDelete: SetNull)
-  model    Model?    @relation("CustomerPreferenceModel", fields: [modelId], references: [id], onDelete: SetNull)
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  brand    Brand?   @relation("CustomerPreferenceBrand", fields: [brandId], references: [id], onDelete: SetNull)
+  model    Model?   @relation("CustomerPreferenceModel", fields: [modelId], references: [id], onDelete: SetNull)
 
   @@index([storeId])
   @@index([customerId])
 }
 
 model Lead {
-  id        String    @id @default(uuid()) @db.Uuid
-  storeId   String    @db.Uuid
-  status    LeadStatus @default(NEW)
-  source    String?
-  fullName  String?   @map("full_name")
-  phone     String?
-  email     String?
+  id       String     @id @default(uuid()) @db.Uuid
+  storeId  String     @db.Uuid
+  status   LeadStatus @default(NEW)
+  source   String?
+  fullName String?    @map("full_name")
+  phone    String?
+  email    String?
 
-  assignedToUserId String? @db.Uuid @map("assigned_to_user_id")
-  customerId       String? @db.Uuid @map("customer_id")
+  assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
+  customerId       String? @map("customer_id") @db.Uuid
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  assignedTo User? @relation("LeadAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedTo User?     @relation("LeadAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   preference LeadPreference?
@@ -482,7 +488,7 @@ model VehicleType {
   createdAt DateTime  @default(now())
   deletedAt DateTime? @map("deleted_at")
 
-  vehicles Vehicle[]
+  vehicles        Vehicle[]
   leadPreferences LeadPreference[] @relation("LeadPreferenceVehicleType")
 
   @@index([name])
@@ -499,20 +505,20 @@ model Color {
 }
 
 model LeadPreference {
-  id        String   @id @default(uuid()) @db.Uuid
-  storeId   String   @db.Uuid
-  leadId    String   @unique @db.Uuid
+  id      String @id @default(uuid()) @db.Uuid
+  storeId String @db.Uuid
+  leadId  String @unique @db.Uuid
 
-  minPrice  Decimal? @db.Decimal(12, 2) @map("min_price")
-  maxPrice  Decimal? @db.Decimal(12, 2) @map("max_price")
-  yearFrom  Int?     @map("year_from")
-  yearTo    Int?     @map("year_to")
+  minPrice Decimal? @map("min_price") @db.Decimal(12, 2)
+  maxPrice Decimal? @map("max_price") @db.Decimal(12, 2)
+  yearFrom Int?     @map("year_from")
+  yearTo   Int?     @map("year_to")
 
-  desiredBrandId String? @db.Uuid @map("desired_brand_id")
-  desiredModelId String? @db.Uuid @map("desired_model_id")
-  vehicleTypeId  String? @db.Uuid @map("vehicle_type_id")
+  desiredBrandId String? @map("desired_brand_id") @db.Uuid
+  desiredModelId String? @map("desired_model_id") @db.Uuid
+  vehicleTypeId  String? @map("vehicle_type_id") @db.Uuid
 
-  notes     String?
+  notes String?
 
   lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -525,17 +531,17 @@ model LeadPreference {
 }
 
 model Activity {
-  id        String       @id @default(uuid()) @db.Uuid
-  storeId   String       @db.Uuid
-  type      ActivityType
-  notes     String?
+  id      String       @id @default(uuid()) @db.Uuid
+  storeId String       @db.Uuid
+  type    ActivityType
+  notes   String?
 
   leadId     String? @db.Uuid
   customerId String? @db.Uuid
   vehicleId  String? @db.Uuid
 
-  createdByUserId String? @db.Uuid @map("created_by_user_id")
-  createdAt DateTime @default(now())
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now())
 
   store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -551,38 +557,45 @@ model Activity {
 }
 
 model VehicleSale {
-  id        String   @id @default(uuid()) @db.Uuid
-  storeId   String   @db.Uuid
-  vehicleId String   @unique @db.Uuid
+  id        String @id @default(uuid()) @db.Uuid
+  storeId   String @db.Uuid
+  vehicleId String @unique @db.Uuid
 
-  soldByUserId String @db.Uuid @map("sold_by_user_id")
-  createdByUserId String? @db.Uuid @map("created_by_user_id")
-  customerId   String? @db.Uuid @map("customer_id")
-  leadId       String? @db.Uuid @map("lead_id")
+  soldByUserId    String  @map("sold_by_user_id") @db.Uuid
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+  customerId      String? @map("customer_id") @db.Uuid
+  leadId          String? @map("lead_id") @db.Uuid
 
-  soldAt     DateTime @default(now()) @map("sold_at")
-  soldPrice  Decimal? @db.Decimal(12, 2) @map("sold_price")
-  notes      String?
+  soldAt    DateTime @default(now()) @map("sold_at")
+  soldPrice Decimal? @map("sold_price") @db.Decimal(12, 2)
+  notes     String?
 
-  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  soldBy  User    @relation("VehicleSoldBy", fields: [soldByUserId], references: [id], onDelete: Restrict)
-  createdBy User? @relation("VehicleSaleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  soldBy    User    @relation("VehicleSoldBy", fields: [soldByUserId], references: [id], onDelete: Restrict)
+  createdBy User?   @relation("VehicleSaleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   documents SaleDocument[]
   status    SaleStatus     @default(COMPLETED)
+  source    SaleSource     @default(NORMAL)
 
   @@index([storeId])
   @@index([storeId, soldByUserId])
   @@index([storeId, soldAt])
+  @@index([storeId, source])
 }
 
 enum SaleStatus {
   COMPLETED
   CANCELLED
+}
+
+enum SaleSource {
+  NORMAL
+  QUICK
 }
 
 model SaleDocument {
@@ -602,7 +615,7 @@ model Plan {
   id           String   @id @default(uuid()) @db.Uuid
   code         String   @unique
   name         String
-  priceMonthly Decimal  @db.Decimal(12, 2) @map("price_monthly")
+  priceMonthly Decimal  @map("price_monthly") @db.Decimal(12, 2)
   currency     String   @default("USD")
   isActive     Boolean  @default(true)
   features     Json?
@@ -614,20 +627,20 @@ model Plan {
 }
 
 model StoreSubscription {
-  id         String               @id @default(uuid()) @db.Uuid
-  storeId    String               @db.Uuid
-  planId     String               @db.Uuid
-  provider   SubscriptionProvider
-  status     SubscriptionStatus   @default(PENDING)
+  id       String               @id @default(uuid()) @db.Uuid
+  storeId  String               @db.Uuid
+  planId   String               @db.Uuid
+  provider SubscriptionProvider
+  status   SubscriptionStatus   @default(PENDING)
 
-  startsAt   DateTime? @map("starts_at")
-  endsAt     DateTime? @map("ends_at")
+  startsAt DateTime? @map("starts_at")
+  endsAt   DateTime? @map("ends_at")
 
-  approvedByUserId String? @db.Uuid @map("approved_by_user_id")
-  approvedAt DateTime? @map("approved_at")
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at")
 
   canceledAt DateTime? @map("canceled_at")
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
   plan  Plan  @relation(fields: [planId], references: [id], onDelete: Restrict)
@@ -642,10 +655,10 @@ model StoreSubscription {
 }
 
 model Payment {
-  id                  String        @id @default(uuid()) @db.Uuid
-  storeSubscriptionId String        @db.Uuid @map("store_subscription_id")
+  id                  String               @id @default(uuid()) @db.Uuid
+  storeSubscriptionId String               @map("store_subscription_id") @db.Uuid
   provider            SubscriptionProvider
-  status              PaymentStatus @default(PENDING)
+  status              PaymentStatus        @default(PENDING)
 
   amount   Decimal @db.Decimal(12, 2)
   currency String  @default("USD")
@@ -664,9 +677,9 @@ model Payment {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  storeId    String   @db.Uuid
-  actorUserId String? @db.Uuid @map("actor_user_id")
+  id          String  @id @default(uuid()) @db.Uuid
+  storeId     String  @db.Uuid
+  actorUserId String? @map("actor_user_id") @db.Uuid
 
   action   String
   entity   String
@@ -675,8 +688,8 @@ model AuditLog {
   ip        String?
   userAgent String? @map("user_agent")
 
-  before    Json?
-  after     Json?
+  before Json?
+  after  Json?
 
   createdAt DateTime @default(now())
 
@@ -689,17 +702,17 @@ model AuditLog {
 }
 
 model Consignor {
-  id        String   @id @default(uuid()) @db.Uuid
-  storeId   String   @db.Uuid
-  fullName  String   @map("full_name")
-  email     String?
-  phone     String?
-  dni       String?
-  rtn       String?
-  notes     String?
-  createdByUserId String? @db.Uuid @map("created_by_user_id")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid()) @db.Uuid
+  storeId         String   @db.Uuid
+  fullName        String   @map("full_name")
+  email           String?
+  phone           String?
+  dni             String?
+  rtn             String?
+  notes           String?
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   createdBy User?     @relation("ConsignorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -746,17 +759,17 @@ model EventCategory {
 }
 
 model Event {
-  id          String   @id @default(uuid()) @db.Uuid
-  storeId     String   @db.Uuid
-  categoryId  String   @db.Uuid @map("category_id")
+  id          String    @id @default(uuid()) @db.Uuid
+  storeId     String    @db.Uuid
+  categoryId  String    @map("category_id") @db.Uuid
   name        String
   slug        String
   description String?
   date        DateTime?
-  isPublished Boolean  @default(false) @map("is_published")
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isPublished Boolean   @default(false) @map("is_published")
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   store    Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   category EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -771,14 +784,14 @@ model Event {
 }
 
 model EventMedia {
-  id        String    @id @default(uuid()) @db.Uuid
-  eventId   String    @db.Uuid @map("event_id")
-  kind      MediaKind @default(IMAGE)
+  id      String    @id @default(uuid()) @db.Uuid
+  eventId String    @map("event_id") @db.Uuid
+  kind    MediaKind @default(IMAGE)
 
-  fileKey   String @map("file_key")
-  url       String
-  position  Int    @default(0)
-  isCover   Boolean @default(false) @map("is_cover")
+  fileKey  String  @map("file_key")
+  url      String
+  position Int     @default(0)
+  isCover  Boolean @default(false) @map("is_cover")
 
   createdAt DateTime @default(now())
 
@@ -790,8 +803,8 @@ model EventMedia {
 
 model EventVehicle {
   id        String   @id @default(uuid()) @db.Uuid
-  eventId   String   @db.Uuid @map("event_id")
-  vehicleId String   @db.Uuid @map("vehicle_id")
+  eventId   String   @map("event_id") @db.Uuid
+  vehicleId String   @map("vehicle_id") @db.Uuid
   position  Int      @default(0)
   createdAt DateTime @default(now())
 
@@ -823,7 +836,7 @@ model ServiceCategory {
 model ServiceListing {
   id             String   @id @default(uuid()) @db.Uuid
   storeId        String   @db.Uuid
-  categoryId     String?  @db.Uuid @map("category_id")
+  categoryId     String?  @map("category_id") @db.Uuid
   name           String
   serviceType    String?  @map("service_type")
   address        String?
@@ -845,14 +858,14 @@ model ServiceListing {
 }
 
 model ServiceMedia {
-  id               String         @id @default(uuid()) @db.Uuid
-  serviceListingId String         @db.Uuid @map("service_listing_id")
-  kind             MediaKind      @default(IMAGE)
-  fileKey          String         @map("file_key")
+  id               String    @id @default(uuid()) @db.Uuid
+  serviceListingId String    @map("service_listing_id") @db.Uuid
+  kind             MediaKind @default(IMAGE)
+  fileKey          String    @map("file_key")
   url              String
-  position         Int            @default(0)
-  isCover          Boolean        @default(false) @map("is_cover")
-  createdAt        DateTime       @default(now())
+  position         Int       @default(0)
+  isCover          Boolean   @default(false) @map("is_cover")
+  createdAt        DateTime  @default(now())
 
   service ServiceListing @relation(fields: [serviceListingId], references: [id], onDelete: Cascade)
 
@@ -863,29 +876,29 @@ model ServiceMedia {
 // ─── Advertisements ───────────────────────────────────────────
 
 model Advertisement {
-  id        String       @id @default(uuid()) @db.Uuid
-  storeId   String       @db.Uuid
+  id        String      @id @default(uuid()) @db.Uuid
+  storeId   String      @db.Uuid
   title     String?
   kind      MediaKind   @default(IMAGE)
   imageUrl  String      @map("image_url")
   targetUrl String?     @map("target_url")
   placement AdPlacement
-  isActive  Boolean      @default(true) @map("is_active")
-  position  Int          @default(0)
-  
+  isActive  Boolean     @default(true) @map("is_active")
+  position  Int         @default(0)
+
   // Metrics
-  impressions    Int        @default(0)
-  clicks         Int        @default(0)
-  whatsappClicks Int        @default(0) @map("whatsapp_clicks")
-  shareClicks    Int        @default(0) @map("share_clicks")
-  
+  impressions    Int @default(0)
+  clicks         Int @default(0)
+  whatsappClicks Int @default(0) @map("whatsapp_clicks")
+  shareClicks    Int @default(0) @map("share_clicks")
+
   // Randomization weights
-  weight      Int        @default(1)
+  weight Int @default(1)
 
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([storeId, isActive])
@@ -901,23 +914,23 @@ enum ConversationStatus {
 }
 
 model WhatsAppConversation {
-  id            String             @id @default(uuid()) @db.Uuid
-  storeId       String             @db.Uuid
-  customerPhone String
-  customerName  String?
-  vendorId      String?            @db.Uuid
-  vendorName    String?
-  status        ConversationStatus @default(PENDING)
-  lastMessage   String?
-  lastMessageAt DateTime?
-  assignedAt    DateTime?
-  closedAt      DateTime?
-  closedBy      String?
+  id             String             @id @default(uuid()) @db.Uuid
+  storeId        String             @db.Uuid
+  customerPhone  String
+  customerName   String?
+  vendorId       String?            @db.Uuid
+  vendorName     String?
+  status         ConversationStatus @default(PENDING)
+  lastMessage    String?
+  lastMessageAt  DateTime?
+  assignedAt     DateTime?
+  closedAt       DateTime?
+  closedBy       String?
   followUpSentAt DateTime?
-  followUpCount   Int              @default(0)
-  nextFollowUpAt  DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  followUpCount  Int                @default(0)
+  nextFollowUpAt DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -945,16 +958,15 @@ model VendorAvailability {
 }
 
 model WhatsAppBusinessHours {
-  id        String   @id @default(uuid()) @db.Uuid
-  storeId   String   @db.Uuid
-  dayOfWeek Int      // 0=Domingo, 1=Lunes, ..., 6=Sábado
-  openTime  String   // "09:00" (formato 24h)
-  closeTime String   // "18:00"
-  isActive  Boolean  @default(true)
+  id        String  @id @default(uuid()) @db.Uuid
+  storeId   String  @db.Uuid
+  dayOfWeek Int // 0=Domingo, 1=Lunes, ..., 6=Sábado
+  openTime  String // "09:00" (formato 24h)
+  closeTime String // "18:00"
+  isActive  Boolean @default(true)
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, dayOfWeek])
   @@index([storeId])
 }
-

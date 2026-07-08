@@ -99,12 +99,14 @@ export class WhatsAppHandlerService {
       return;
     }
 
+    const fallbackMessage = await this.messageService.getFallbackMessage(storeId);
+
     if (whatsappId) {
-      await this.messageService.sendReplyToChat(storeId, whatsappId, '❓ No entendí tu mensaje.\n\nEscribe "Hola" para ver las opciones o busca un vehículo así:\n🚗 Honda/Civic/2014');
+      await this.messageService.sendReplyToChat(storeId, whatsappId, fallbackMessage);
     } else {
       await this.messageService.sendMessage(storeId, {
         to: sendTo,
-        text: 'No entendí tu mensaje. Escribe "Hola" para ver las opciones o busca un vehículo así: Honda/Civic/2014',
+        text: fallbackMessage,
       });
     }
   }
@@ -166,9 +168,9 @@ export class WhatsAppHandlerService {
     const price = selectedVehicle.offerPrice || selectedVehicle.price;
     const priceText = price ? `$${Number(price).toLocaleString()}` : 'Precio por consultar';
 
-    await this.messageService.sendReplyToChat(storeId, chatId,
-      `✅ *Selección confirmada*\n\n🚗 Vehículo: ${vehicleInfo}\n💰 Precio: ${priceText}\n\nUn vendedor te contactará pronto para darte más información.`
-    );
+    const selectionMessage = await this.messageService.getVehicleSelectionMessage(storeId, vehicleInfo, priceText);
+
+    await this.messageService.sendReplyToChat(storeId, chatId, selectionMessage);
 
     const vendor = await this.vendorAssignment.assignNextAvailableVendor(storeId);
     if (vendor) {
@@ -187,9 +189,10 @@ export class WhatsAppHandlerService {
     const vendor = await this.vendorAssignment.assignNextAvailableVendor(storeId);
 
     if (!vendor) {
+      const noVendorsMessage = await this.messageService.getNoVendorsMessage(storeId);
       await this.messageService.sendMessage(storeId, {
         to: customerPhone,
-        text: 'En este momento no hay vendedores disponibles. Te contactaremos pronto.',
+        text: noVendorsMessage,
       });
       return;
     }
@@ -208,7 +211,8 @@ export class WhatsAppHandlerService {
     const vendor = await this.vendorAssignment.assignNextAvailableVendor(storeId);
 
     if (!vendor) {
-      await this.messageService.sendReplyToChat(storeId, chatId, '⏳ En este momento no hay vendedores disponibles.\n\nTe contactaremos pronto.');
+      const noVendorsMessage = await this.messageService.getNoVendorsMessage(storeId);
+      await this.messageService.sendReplyToChat(storeId, chatId, `⏳ ${noVendorsMessage}`);
       return;
     }
 

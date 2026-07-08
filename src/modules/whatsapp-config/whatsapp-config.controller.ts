@@ -54,7 +54,19 @@ export class WhatsAppConfigController {
 
   @Patch('settings')
   @RequirePermissions('whatsapp:update')
-  async updateSettings(@Req() req: any, @Body() body: { timezone?: string; closedMessage?: string }) {
+  async updateSettings(
+    @Req() req: any,
+    @Body() body: {
+      timezone?: string;
+      closedMessage?: string;
+      welcomeMessage?: string;
+      fallbackMessage?: string;
+      vendorRequestMessage?: string;
+      noVendorsMessage?: string;
+      vehicleSelectionMessage?: string;
+      searchPromptMessage?: string;
+    },
+  ) {
     return this.configService.updateSettings(req.storeId, body);
   }
 

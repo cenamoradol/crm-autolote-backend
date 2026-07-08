@@ -9,9 +9,62 @@ export interface OutgoingMessage {
   buttons?: { text: string }[];
 }
 
+interface BotMessageConfig {
+  welcomeMessage: string;
+  fallbackMessage: string;
+  vendorRequestMessage: string;
+  noVendorsMessage: string;
+  vehicleSelectionMessage: string;
+  searchPromptMessage: string;
+}
+
 @Injectable()
 export class WhatsAppMessageService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async getBotConfig(storeId: string): Promise<BotMessageConfig> {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        whatsappWelcomeMessage: true,
+        whatsappFallbackMessage: true,
+        whatsappVendorRequestMessage: true,
+        whatsappNoVendorsMessage: true,
+        whatsappVehicleSelectionMessage: true,
+        whatsappSearchPromptMessage: true,
+      },
+    });
+
+    return {
+      welcomeMessage:
+        store?.whatsappWelcomeMessage ??
+        '¡Hola! 👋 Bienvenido al chat de auto-consulta.\n\n' +
+          'Puedes buscar vehículos de las siguientes formas:\n\n' +
+          '1️⃣ Formato rápido: Marca/Modelo/Año\n' +
+          '   Ejemplo: Honda/Civic/2014\n\n' +
+          '2️⃣ Solo el nombre: Civic 2014\n\n' +
+          '3️⃣ Escribe "vendedor" para hablar con un asesor\n\n' +
+          '¿Qué vehículo estás buscando?',
+      fallbackMessage:
+        store?.whatsappFallbackMessage ??
+        '❓ No entendí tu mensaje.\n\nEscribe "Hola" para ver las opciones o busca un vehículo así:\n🚗 Honda/Civic/2014',
+      vendorRequestMessage:
+        store?.whatsappVendorRequestMessage ?? 'Te estamos asignando a un vendedor...',
+      noVendorsMessage:
+        store?.whatsappNoVendorsMessage ??
+        'En este momento no hay vendedores disponibles. Te contactaremos pronto.',
+      vehicleSelectionMessage:
+        store?.whatsappVehicleSelectionMessage ??
+        '✅ *Selección confirmada*\n\n🚗 Vehículo: {vehicleInfo}\n💰 Precio: {priceText}\n\nUn vendedor te contactará pronto para darte más información.',
+      searchPromptMessage:
+        store?.whatsappSearchPromptMessage ??
+        'Mostrando 5 de {count} resultados. Refina tu búsqueda o contacta a un vendedor.',
+    };
+  }
+
+  private interpolate(template: string, values: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`);
+  }
 
   async sendMessage(storeId: string, message: OutgoingMessage): Promise<boolean> {
     try {
@@ -62,6 +115,8 @@ export class WhatsAppMessageService {
     customerPhone: string,
     vehicles: any[],
   ): Promise<void> {
+    const config = await this.getBotConfig(storeId);
+
     if (vehicles.length === 0) {
       await this.sendMessage(storeId, {
         to: customerPhone,
@@ -87,7 +142,7 @@ export class WhatsAppMessageService {
     if (vehicles.length > 5) {
       await this.sendMessage(storeId, {
         to: customerPhone,
-        text: `Mostrando 5 de ${vehicles.length} resultados. Refina tu búsqueda o contacta a un vendedor.`,
+        text: this.interpolate(config.searchPromptMessage, { count: String(vehicles.length) }),
       });
     }
   }
@@ -97,6 +152,8 @@ export class WhatsAppMessageService {
     chatId: string,
     vehicles: any[],
   ): Promise<void> {
+    const config = await this.getBotConfig(storeId);
+
     if (vehicles.length === 0) {
       await this.sendReplyToChat(storeId, chatId, '🔍 No encontramos vehículos con esos criterios.\n\nFormato: Marca/Modelo/Año\nEjemplo: Honda/Civic/2014');
       return;
@@ -128,7 +185,7 @@ export class WhatsAppMessageService {
 
     if (displayVehicles.length > 1) {
       const optionsText = selectionOptions.join(', ');
-      await this.sendReplyToChat(storeId, chatId, 
+      await this.sendReplyToChat(storeId, chatId,
         `📋 *Selecciona un vehículo:*\n\nResponde con el *número* de tu elección: ${optionsText}\n\nO escribe *"vendedor"* para hablar con un asesor.`
       );
     } else if (displayVehicles.length === 1) {
@@ -136,7 +193,7 @@ export class WhatsAppMessageService {
     }
 
     if (vehicles.length > 5) {
-      await this.sendReplyToChat(storeId, chatId, `📋 Mostrando 5 de ${vehicles.length} resultados.\n\nRefina tu búsqueda o escribe "vendedor" para que un asesor te atienda.`);
+      await this.sendReplyToChat(storeId, chatId, this.interpolate(config.searchPromptMessage, { count: String(vehicles.length) }));
     }
   }
 
@@ -146,11 +203,12 @@ export class WhatsAppMessageService {
     vendorName: string,
     vendorPhone: string,
   ): Promise<void> {
+    const config = await this.getBotConfig(storeId);
     const link = `https://wa.me/${vendorPhone.replace(/\D/g, '')}?text=Hola,%20me%20interesa%20un%20vehículo%20que%20vi%20en%20su%20inventario.`;
 
     await this.sendMessage(storeId, {
       to: customerPhone,
-      text: `Te estamos asignando a un vendedor...`,
+      text: config.vendorRequestMessage,
     });
 
     await this.sendMessage(storeId, {
@@ -165,9 +223,10 @@ export class WhatsAppMessageService {
     vendorName: string,
     vendorPhone: string,
   ): Promise<void> {
+    const config = await this.getBotConfig(storeId);
     const link = `https://wa.me/${vendorPhone.replace(/\D/g, '')}?text=Hola,%20me%20interesa%20un%20vehículo%20que%20vi%20en%20su%20inventario.`;
 
-    await this.sendReplyToChat(storeId, chatId, `👤 Te estamos asignando a un vendedor...`);
+    await this.sendReplyToChat(storeId, chatId, `👤 ${config.vendorRequestMessage}`);
 
     await this.sendReplyToChat(storeId, chatId, `✅ Has sido derivado a ${vendorName}.\nUn vendedor te atenderá pronto.\n\n📱 Contacto directo: ${link}`);
   }
@@ -206,26 +265,34 @@ export class WhatsAppMessageService {
   }
 
   async sendWelcomeMessage(storeId: string, customerPhone: string): Promise<void> {
+    const config = await this.getBotConfig(storeId);
     await this.sendMessage(storeId, {
       to: customerPhone,
-      text: '¡Hola! 👋 Bienvenido al chat de auto-consulta.\n\n' +
-        'Puedes buscar vehículos de las siguientes formas:\n\n' +
-        '1️⃣ Formato rápido: Marca/Modelo/Año\n' +
-        '   Ejemplo: Honda/Civic/2014\n\n' +
-        '2️⃣ Solo el nombre: Civic 2014\n\n' +
-        '3️⃣ Escribe "vendedor" para hablar con un asesor\n\n' +
-        '¿Qué vehículo estás buscando?',
+      text: config.welcomeMessage,
     });
   }
 
   async sendWelcomeMessageToChat(storeId: string, chatId: string): Promise<boolean> {
-    const text = '¡Hola! 👋 Bienvenido al chat de auto-consulta.\n\n' +
-      'Puedes buscar vehículos de las siguientes formas:\n\n' +
-      '1️⃣ Formato rápido: Marca/Modelo/Año\n' +
-      '   Ejemplo: Honda/Civic/2014\n\n' +
-      '2️⃣ Solo el nombre: Civic 2014\n\n' +
-      '3️⃣ Escribe "vendedor" para hablar con un asesor\n\n' +
-      '¿Qué vehículo estás buscando?';
-    return await this.sendReplyToChat(storeId, chatId, text);
+    const config = await this.getBotConfig(storeId);
+    return await this.sendReplyToChat(storeId, chatId, config.welcomeMessage);
+  }
+
+  async getVehicleSelectionMessage(
+    storeId: string,
+    vehicleInfo: string,
+    priceText: string,
+  ): Promise<string> {
+    const config = await this.getBotConfig(storeId);
+    return this.interpolate(config.vehicleSelectionMessage, { vehicleInfo, priceText });
+  }
+
+  async getNoVendorsMessage(storeId: string): Promise<string> {
+    const config = await this.getBotConfig(storeId);
+    return config.noVendorsMessage;
+  }
+
+  async getFallbackMessage(storeId: string): Promise<string> {
+    const config = await this.getBotConfig(storeId);
+    return config.fallbackMessage;
   }
 }

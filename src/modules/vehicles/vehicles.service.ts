@@ -259,4 +259,103 @@ export class VehiclesService {
 
     return { ok: true };
   }
+
+  async quickSale(storeId: string, userId: string, id: string, dto: { soldPrice: number; customerId?: string; leadId?: string; notes?: string }) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id, storeId },
+      select: { id: true, status: true, title: true, publicId: true },
+    });
+    if (!vehicle) throw new BadRequestException({ code: 'NOT_FOUND', message: 'Vehículo no existe.' });
+    if (vehicle.status === 'SOLD') throw new BadRequestException({ code: 'ALREADY_SOLD', message: 'El vehículo ya está vendido.' });
+    if (vehicle.status === 'ARCHIVED') throw new BadRequestException({ code: 'ARCHIVED', message: 'El vehículo está archivado.' });
+
+    if (dto.customerId) {
+      const c = await this.prisma.customer.findFirst({ where: { id: dto.customerId, storeId } });
+      if (!c) throw new BadRequestException({ code: 'INVALID_CUSTOMER', message: 'Customer inválido.' });
+    }
+    if (dto.leadId) {
+      const l = await this.prisma.lead.findFirst({ where: { id: dto.leadId, storeId } });
+      if (!l) throw new BadRequestException({ code: 'INVALID_LEAD', message: 'Lead inválido.' });
+    }
+
+    const now = new Date();
+    const soldPrice = new Prisma.Decimal(dto.soldPrice);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const sale = await tx.vehicleSale.create({
+        data: {
+          storeId,
+          vehicleId: id,
+          soldByUserId: userId,
+          createdByUserId: userId,
+          customerId: dto.customerId,
+          leadId: dto.leadId,
+          soldAt: now,
+          soldPrice,
+          notes: dto.notes,
+          source: 'QUICK',
+        },
+      });
+
+      await tx.vehicle.update({
+        where: { id },
+        data: {
+          status: 'SOLD',
+          soldAt: now,
+          soldPrice,
+          isPublished: false,
+        },
+      });
+
+      await tx.vehicleStatusHistory.create({
+        data: {
+          vehicleId: id,
+          fromStatus: vehicle.status,
+          toStatus: 'SOLD',
+          changedByUserId: userId,
+          changedAt: now,
+        },
+      });
+
+      return sale;
+    });
+
+    if (dto.customerId) {
+      await this.prisma.customer.update({
+        where: { id: dto.customerId },
+        data: { status: 'PURCHASED' as any },
+      });
+      await this.prisma.activity.create({
+        data: {
+          storeId,
+          type: 'SYSTEM' as any,
+          notes: `Cliente marcado como COMPRÓ — Venta rápida de vehículo ${vehicle.publicId || id}`,
+          customerId: dto.customerId,
+          createdByUserId: userId,
+        } as any,
+      });
+    }
+
+    await this.prisma.activity.create({
+      data: {
+        storeId,
+        type: 'SYSTEM' as any,
+        notes: `Venta rápida registrada: ${vehicle.title || vehicle.publicId || id}`,
+        vehicleId: id,
+        createdByUserId: userId,
+      } as any,
+    });
+
+    return this.prisma.vehicleSale.findFirst({
+      where: { id: result.id, storeId },
+      include: {
+        vehicle: { include: { brand: true, model: true, branch: true } },
+        customer: true,
+        lead: true,
+        soldBy: { select: { id: true, email: true, fullName: true } },
+        createdBy: { select: { id: true, email: true, fullName: true } },
+        documents: true,
+      },
+    });
+  }
 }
