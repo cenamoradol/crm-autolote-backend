@@ -1,9 +1,12 @@
-import { Controller, Get, Param, Query, Post } from '@nestjs/common';
+import { Controller, Get, Logger, Param, Post, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { PublicService } from './public.service';
 import { SearchVehiclesDto } from './dto/search-vehicles.dto';
 
 @Controller('public')
 export class PublicController {
+  private readonly logger = new Logger(PublicController.name);
+
   constructor(private readonly pub: PublicService) {}
 
   @Get('stores/:storeSlug/vehicles')
@@ -25,11 +28,20 @@ export class PublicController {
   }
 
   @Get('id/:storeId/vehicles/search')
-  searchVehiclesById(
+  async searchVehiclesById(
+    @Req() req: Request,
     @Param('storeId') storeId: string,
     @Query() q: SearchVehiclesDto,
   ) {
-    return this.pub.searchVehiclesByStoreId(storeId, q);
+    const ua = req.headers['user-agent'] ?? '';
+    this.logger.log(
+      `[vehicles/search] storeId=${storeId} ip=${req.ip} ua="${ua}" query=${JSON.stringify(q)}`,
+    );
+    const result = await this.pub.searchVehiclesByStoreId(storeId, q);
+    this.logger.log(
+      `[vehicles/search] storeId=${storeId} returned=${result.results.length}/${result.total}`,
+    );
+    return result;
   }
 
   @Get('id/:storeId/vehicles/:publicId')
