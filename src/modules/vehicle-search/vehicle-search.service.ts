@@ -14,6 +14,7 @@ export interface VehicleSearchParams {
   status?: 'AVAILABLE' | 'RESERVED' | 'SOLD';
   limit?: number;
   offset?: number;
+  onlyPublished?: boolean;
 }
 
 const VEHICLE_COVER_INCLUDE = {
@@ -43,8 +44,11 @@ export class VehicleSearchService {
     const where: Prisma.VehicleWhereInput = {
       storeId,
       status: 'AVAILABLE',
-      isPublished: true,
     };
+
+    if (params.onlyPublished !== false) {
+      where.isPublished = true;
+    }
 
     if (params.brand) {
       where.brand = { name: { contains: params.brand, mode: 'insensitive' } };

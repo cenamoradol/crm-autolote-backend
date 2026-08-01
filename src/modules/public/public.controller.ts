@@ -24,6 +24,14 @@ export class PublicController {
     return this.pub.listVehiclesById(storeId);
   }
 
+  @Get('id/:storeId/vehicles/search')
+  searchVehiclesById(
+    @Param('storeId') storeId: string,
+    @Query() q: SearchVehiclesDto,
+  ) {
+    return this.pub.searchVehiclesByStoreId(storeId, q);
+  }
+
   @Get('id/:storeId/vehicles/:publicId')
   getById(
     @Param('storeId') storeId: string,
@@ -35,14 +43,6 @@ export class PublicController {
   @Get('id/:storeId/clearance')
   listClearanceById(@Param('storeId') storeId: string) {
     return this.pub.listClearanceVehiclesById(storeId);
-  }
-
-  @Get('id/:storeId/vehicles/search')
-  searchVehiclesById(
-    @Param('storeId') storeId: string,
-    @Query() q: SearchVehiclesDto,
-  ) {
-    return this.pub.searchVehiclesByStoreId(storeId, q);
   }
 
   @Get('id/:storeId/services')

@@ -135,10 +135,10 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
-    const { results, total } = await this.vehicleSearch.searchWithCount(
-      storeId,
-      params,
-    );
+    const { results, total } = await this.vehicleSearch.searchWithCount(storeId, {
+      ...params,
+      onlyPublished: false,
+    });
 
     return {
       results,
