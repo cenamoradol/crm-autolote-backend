@@ -1,28 +1,36 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VehicleSearchService } from '../vehicle-search/vehicle-search.service';
 
 @Injectable()
 export class PublicService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vehicleSearch: VehicleSearchService,
+  ) {}
 
   async listVehicles(storeSlug: string) {
     const store = await this.prisma.store.findUnique({
       where: { slug: storeSlug },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { 
-        storeId: store.id, 
-        isPublished: true, 
-        isClearance: false, 
+      where: {
+        storeId: store.id,
+        isPublished: true,
+        isClearance: false,
         status: { not: 'ARCHIVED' },
-        OR: [
-          { maxPublishDate: null },
-          { maxPublishDate: { gt: now } }
-        ]
+        OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
       },
       select: {
         id: true,
@@ -58,21 +66,25 @@ export class PublicService {
   async listVehiclesById(storeId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { 
-        storeId: store.id, 
-        isPublished: true, 
-        isClearance: false, 
+      where: {
+        storeId: store.id,
+        isPublished: true,
+        isClearance: false,
         status: { not: 'ARCHIVED' },
-        OR: [
-          { maxPublishDate: null },
-          { maxPublishDate: { gt: now } }
-        ]
+        OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
       },
       select: {
         id: true,
@@ -105,24 +117,59 @@ export class PublicService {
     return { store, vehicles };
   }
 
+  async searchVehiclesByStoreId(
+    storeId: string,
+    params: {
+      brand?: string;
+      model?: string;
+      year?: number;
+      minYear?: number;
+      maxYear?: number;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true },
+    });
+    if (!store) throw new NotFoundException('Store no existe.');
+
+    const { results, total } = await this.vehicleSearch.searchWithCount(
+      storeId,
+      params,
+    );
+
+    return {
+      results,
+      total,
+      limit: params.limit ?? 20,
+      offset: params.offset ?? 0,
+    };
+  }
+
   async listClearanceVehiclesById(storeId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const now = new Date();
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { 
-        storeId: store.id, 
-        isPublished: true, 
-        isClearance: true, 
+      where: {
+        storeId: store.id,
+        isPublished: true,
+        isClearance: true,
         status: { not: 'ARCHIVED' },
-        OR: [
-          { maxPublishDate: null },
-          { maxPublishDate: { gt: now } }
-        ]
+        OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
       },
       select: {
         id: true,
@@ -159,20 +206,24 @@ export class PublicService {
   async getVehicle(storeSlug: string, publicId: string) {
     const store = await this.prisma.store.findUnique({
       where: { slug: storeSlug },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const now = new Date();
     const vehicle = await this.prisma.vehicle.findFirst({
-      where: { 
-        storeId: store.id, 
-        publicId, 
+      where: {
+        storeId: store.id,
+        publicId,
         isPublished: true,
-        OR: [
-          { maxPublishDate: null },
-          { maxPublishDate: { gt: now } }
-        ]
+        OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
       },
       select: {
         id: true,
@@ -209,20 +260,24 @@ export class PublicService {
   async getVehicleById(storeId: string, publicId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const now = new Date();
     const vehicle = await this.prisma.vehicle.findFirst({
-      where: { 
-        storeId: store.id, 
-        publicId, 
+      where: {
+        storeId: store.id,
+        publicId,
         isPublished: true,
-        OR: [
-          { maxPublishDate: null },
-          { maxPublishDate: { gt: now } }
-        ]
+        OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
       },
       select: {
         id: true,
@@ -257,7 +312,7 @@ export class PublicService {
   }
 
   // ─── Servicios (Public) ────────────────────────────────────
-  
+
   async listServiceCategoriesById(storeId: string) {
     const categories = await this.prisma.serviceCategory.findMany({
       where: { storeId },
@@ -269,19 +324,26 @@ export class PublicService {
   async listServicesById(storeId: string, categorySlug?: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
     const services = await this.prisma.serviceListing.findMany({
-      where: { 
-        storeId: store.id, 
+      where: {
+        storeId: store.id,
         isPublished: true,
-        ...(categorySlug ? { category: { slug: categorySlug } } : {})
+        ...(categorySlug ? { category: { slug: categorySlug } } : {}),
       },
-      include: { 
+      include: {
         media: { orderBy: { position: 'asc' } },
-        category: true
+        category: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -348,7 +410,14 @@ export class PublicService {
   async listCategoryEventsById(storeId: string, categorySlug: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
@@ -363,7 +432,7 @@ export class PublicService {
       where: { storeId: store.id, categoryId: category.id, isPublished: true },
       include: {
         media: {
-          orderBy: [{ isCover: 'desc' }, { position: 'asc' }]
+          orderBy: [{ isCover: 'desc' }, { position: 'asc' }],
         },
         vehicles: {
           orderBy: { position: 'asc' },
@@ -385,10 +454,10 @@ export class PublicService {
                 colorRef: true,
                 vehicleType: true,
                 media: { where: { isCover: true }, take: 1 },
-              }
-            }
-          }
-        }
+              },
+            },
+          },
+        },
       },
       // Order by latest event date descending
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
@@ -400,7 +469,14 @@ export class PublicService {
   async getEvent(storeSlug: string, eventSlug: string) {
     const store = await this.prisma.store.findUnique({
       where: { slug: storeSlug },
-      select: { id: true, name: true, slug: true, logoUrl: true, currency: true, currencySymbol: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        currency: true,
+        currencySymbol: true,
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
@@ -436,7 +512,8 @@ export class PublicService {
       },
     });
 
-    if (!event || !event.isPublished) throw new NotFoundException('Evento no encontrado.');
+    if (!event || !event.isPublished)
+      throw new NotFoundException('Evento no encontrado.');
     return { store, event };
   }
 

@@ -6,17 +6,40 @@ export interface VehicleSearchParams {
   brand?: string;
   model?: string;
   year?: number;
+  minYear?: number;
+  maxYear?: number;
   minPrice?: number;
   maxPrice?: number;
   vehicleTypeId?: string;
   status?: 'AVAILABLE' | 'RESERVED' | 'SOLD';
+  limit?: number;
+  offset?: number;
 }
+
+const VEHICLE_COVER_INCLUDE = {
+  brand: true,
+  model: true,
+  media: { where: { isCover: true }, take: 1 },
+  branch: true,
+};
+
+const VEHICLE_FULL_INCLUDE = {
+  brand: true,
+  model: true,
+  vehicleType: true,
+  colorRef: true,
+  branch: { select: { id: true, name: true } },
+  media: { orderBy: { position: 'asc' as const } },
+};
 
 @Injectable()
 export class VehicleSearchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async search(storeId: string, params: VehicleSearchParams): Promise<any[]> {
+  private buildWhere(
+    storeId: string,
+    params: VehicleSearchParams,
+  ): Prisma.VehicleWhereInput {
     const where: Prisma.VehicleWhereInput = {
       storeId,
       status: 'AVAILABLE',
@@ -24,19 +47,20 @@ export class VehicleSearchService {
     };
 
     if (params.brand) {
-      where.brand = {
-        name: { contains: params.brand, mode: 'insensitive' },
-      };
+      where.brand = { name: { contains: params.brand, mode: 'insensitive' } };
     }
 
     if (params.model) {
-      where.model = {
-        name: { contains: params.model, mode: 'insensitive' },
-      };
+      where.model = { name: { contains: params.model, mode: 'insensitive' } };
     }
 
-    if (params.year) {
+    if (params.year !== undefined) {
       where.year = params.year;
+    } else if (params.minYear !== undefined || params.maxYear !== undefined) {
+      const yearFilter: Prisma.IntNullableFilter = {};
+      if (params.minYear !== undefined) yearFilter.gte = params.minYear;
+      if (params.maxYear !== undefined) yearFilter.lte = params.maxYear;
+      where.year = yearFilter;
     }
 
     if (params.minPrice) {
@@ -44,7 +68,10 @@ export class VehicleSearchService {
     }
 
     if (params.maxPrice) {
-      where.price = { ...((where.price as object) || {}), lte: params.maxPrice };
+      where.price = {
+        ...((where.price as object) || {}),
+        lte: params.maxPrice,
+      };
     }
 
     if (params.vehicleTypeId) {
@@ -55,23 +82,45 @@ export class VehicleSearchService {
       where.status = params.status;
     }
 
+    return where;
+  }
+
+  async search(storeId: string, params: VehicleSearchParams): Promise<any[]> {
+    const where = this.buildWhere(storeId, params);
+
     return this.prisma.vehicle.findMany({
       where,
-      include: {
-        brand: true,
-        model: true,
-        media: {
-          where: { isCover: true },
-          take: 1,
-        },
-        branch: true,
-      },
+      include: VEHICLE_COVER_INCLUDE,
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: params.limit ?? 20,
+      skip: params.offset ?? 0,
     });
   }
 
-  async getVehicleById(storeId: string, vehicleId: string): Promise<any | null> {
+  async searchWithCount(
+    storeId: string,
+    params: VehicleSearchParams,
+  ): Promise<{ results: any[]; total: number }> {
+    const where = this.buildWhere(storeId, params);
+
+    const [results, total] = await Promise.all([
+      this.prisma.vehicle.findMany({
+        where,
+        include: VEHICLE_FULL_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        take: params.limit ?? 20,
+        skip: params.offset ?? 0,
+      }),
+      this.prisma.vehicle.count({ where }),
+    ]);
+
+    return { results, total };
+  }
+
+  async getVehicleById(
+    storeId: string,
+    vehicleId: string,
+  ): Promise<any | null> {
     return this.prisma.vehicle.findFirst({
       where: {
         id: vehicleId,
@@ -90,7 +139,10 @@ export class VehicleSearchService {
     });
   }
 
-  async getFeaturedVehicles(storeId: string, limit: number = 5): Promise<any[]> {
+  async getFeaturedVehicles(
+    storeId: string,
+    limit: number = 5,
+  ): Promise<any[]> {
     return this.prisma.vehicle.findMany({
       where: {
         storeId,
@@ -118,7 +170,11 @@ export class VehicleSearchService {
     return this.search(storeId, { model: modelName });
   }
 
-  async getSimilarVehicles(storeId: string, vehicleId: string, limit: number = 3): Promise<any[]> {
+  async getSimilarVehicles(
+    storeId: string,
+    vehicleId: string,
+    limit: number = 3,
+  ): Promise<any[]> {
     const vehicle = await this.getVehicleById(storeId, vehicleId);
 
     if (!vehicle) return [];

@@ -1,9 +1,10 @@
 import { Controller, Get, Param, Query, Post } from '@nestjs/common';
 import { PublicService } from './public.service';
+import { SearchVehiclesDto } from './dto/search-vehicles.dto';
 
 @Controller('public')
 export class PublicController {
-  constructor(private readonly pub: PublicService) { }
+  constructor(private readonly pub: PublicService) {}
 
   @Get('stores/:storeSlug/vehicles')
   list(@Param('storeSlug') storeSlug: string) {
@@ -11,7 +12,10 @@ export class PublicController {
   }
 
   @Get('stores/:storeSlug/vehicles/:publicId')
-  get(@Param('storeSlug') storeSlug: string, @Param('publicId') publicId: string) {
+  get(
+    @Param('storeSlug') storeSlug: string,
+    @Param('publicId') publicId: string,
+  ) {
     return this.pub.getVehicle(storeSlug, publicId);
   }
 
@@ -21,7 +25,10 @@ export class PublicController {
   }
 
   @Get('id/:storeId/vehicles/:publicId')
-  getById(@Param('storeId') storeId: string, @Param('publicId') publicId: string) {
+  getById(
+    @Param('storeId') storeId: string,
+    @Param('publicId') publicId: string,
+  ) {
     return this.pub.getVehicleById(storeId, publicId);
   }
 
@@ -30,10 +37,18 @@ export class PublicController {
     return this.pub.listClearanceVehiclesById(storeId);
   }
 
+  @Get('id/:storeId/vehicles/search')
+  searchVehiclesById(
+    @Param('storeId') storeId: string,
+    @Query() q: SearchVehiclesDto,
+  ) {
+    return this.pub.searchVehiclesByStoreId(storeId, q);
+  }
+
   @Get('id/:storeId/services')
   listServicesById(
     @Param('storeId') storeId: string,
-    @Query('category') category?: string
+    @Query('category') category?: string,
   ) {
     return this.pub.listServicesById(storeId, category);
   }
@@ -102,13 +117,18 @@ export class PublicController {
   }
 
   @Post('id/:storeId/services/:serviceId/whatsapp-click')
-  trackServiceWhatsappClick(@Param('storeId') storeId: string, @Param('serviceId') serviceId: string) {
+  trackServiceWhatsappClick(
+    @Param('storeId') storeId: string,
+    @Param('serviceId') serviceId: string,
+  ) {
     return this.pub.trackServiceWhatsappClick(storeId, serviceId);
   }
 
   @Post('id/:storeId/services/:serviceId/share-click')
-  trackServiceShareClick(@Param('storeId') storeId: string, @Param('serviceId') serviceId: string) {
+  trackServiceShareClick(
+    @Param('storeId') storeId: string,
+    @Param('serviceId') serviceId: string,
+  ) {
     return this.pub.trackServiceShareClick(storeId, serviceId);
   }
 }
-
