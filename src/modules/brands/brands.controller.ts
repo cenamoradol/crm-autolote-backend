@@ -23,6 +23,11 @@ export class BrandsController {
     return this.brands.listModelsByBrand(brandId, q);
   }
 
+  @Get('brands-with-models')
+  listBrandsWithModels(@Query('q') q?: string) {
+    return this.brands.listBrandsWithModels(q);
+  }
+
   @Get('models')
   listModels(@Query('q') q?: string, @Query('brandId') brandId?: string) {
     return this.brands.listModels(q, brandId);

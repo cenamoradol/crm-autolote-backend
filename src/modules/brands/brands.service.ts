@@ -45,6 +45,25 @@ export class BrandsService {
     });
   }
 
+  async listBrandsWithModels(q?: string) {
+    const where = q
+      ? { name: { contains: q.trim(), mode: 'insensitive' as const } }
+      : undefined;
+
+    return this.prisma.brand.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        models: {
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   // ---------- BRAND CRUD ----------
   async createBrand(name: string) {
     const clean = normalizeName(name);
