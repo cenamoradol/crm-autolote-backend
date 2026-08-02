@@ -40,7 +40,7 @@ export class BrandsService {
 
     return this.prisma.model.findMany({
       where,
-      select: { id: true, name: true, brandId: true },
+      select: { id: true, name: true, brandId: true, brand: { select: { id: true, name: true } } },
       orderBy: [{ brandId: 'asc' }, { name: 'asc' }],
     });
   }
