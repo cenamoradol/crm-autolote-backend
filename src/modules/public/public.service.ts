@@ -159,7 +159,7 @@ export class PublicService {
 
     const { results, total } = await this.vehicleSearch.searchWithCount(storeId, {
       ...params,
-      onlyPublished: false,
+      onlyPublished: true,
     });
 
     const resultsWithUrl = results.map((v) => ({
