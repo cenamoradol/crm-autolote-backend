@@ -78,8 +78,8 @@ model Store {
   currency       String   @default("USD")
   currencySymbol String   @default("$") @map("currency_symbol")
 
-  // Dominio del sitio público del tenant (ej. "www.tecambiotucarro.hn"). Distinto del dominio del portal CRM.
-  publicSiteDomain String? @map("public_site_domain")
+  // URL completa del sitio web público de la tienda (ej. "https://www.tecambiotucarro.hn"). Si está vacía, los URLs públicos usan el dominio del portal.
+  urlWebsite     String?  @map("url_website")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -143,7 +143,7 @@ export class PublicService {
       where: { id: storeId },
       select: {
         id: true,
-        publicSiteDomain: true,
+        urlWebsite: true,
         domains: {
           where: { isPrimary: true },
           take: 1,
@@ -153,9 +153,9 @@ export class PublicService {
     });
     if (!store) throw new NotFoundException('Store no existe.');
 
-    const siteDomain =
-      store.publicSiteDomain ?? store.domains[0]?.domain ?? '';
-    const origin = siteDomain ? `https://${siteDomain}` : '';
+    const origin =
+      store.urlWebsite?.replace(/\/$/, '') ||
+      (store.domains[0] ? `https://${store.domains[0].domain}` : '');
 
     const { results, total } = await this.vehicleSearch.searchWithCount(storeId, {
       ...params,

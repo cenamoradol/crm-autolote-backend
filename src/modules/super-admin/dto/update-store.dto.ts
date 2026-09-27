@@ -31,5 +31,6 @@ export class UpdateStoreDto {
 
   @IsOptional()
   @IsString()
-  publicSiteDomain?: string;
+  @Matches(/^https?:\/\/[^\s]+$/)
+  urlWebsite?: string;
 }
