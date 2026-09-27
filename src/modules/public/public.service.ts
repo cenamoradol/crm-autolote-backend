@@ -2,6 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VehicleSearchService } from '../vehicle-search/vehicle-search.service';
 
+// ponytail: duplicado de events.service.ts / service-categories.service.ts; mover a src/common/slugify.ts cuando aparezca un cuarto caller.
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 @Injectable()
 export class PublicService {
   constructor(
@@ -131,17 +141,33 @@ export class PublicService {
   ) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true },
+      select: {
+        id: true,
+        domains: {
+          where: { isPrimary: true },
+          take: 1,
+          select: { domain: true },
+        },
+      },
     });
     if (!store) throw new NotFoundException('Store no existe.');
+
+    const origin = store.domains[0]
+      ? `https://${store.domains[0].domain}`
+      : '';
 
     const { results, total } = await this.vehicleSearch.searchWithCount(storeId, {
       ...params,
       onlyPublished: false,
     });
 
+    const resultsWithUrl = results.map((v) => ({
+      ...v,
+      url: origin ? `${origin}/vehiculos/${v.publicId}/${slugify(v.title)}` : null,
+    }));
+
     return {
-      results,
+      results: resultsWithUrl,
       total,
       limit: params.limit ?? 20,
       offset: params.offset ?? 0,
