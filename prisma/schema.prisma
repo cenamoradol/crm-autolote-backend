@@ -313,6 +313,9 @@ model Vehicle {
   whatsappClicks Int @default(0) @map("whatsapp_clicks")
   shareClicks    Int @default(0) @map("share_clicks")
 
+  shortCode   String? @unique @map("short_code")
+  shortClicks Int     @default(0) @map("short_clicks")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -847,8 +850,9 @@ model ServiceListing {
   email          String?
   description    String?
   isPublished    Boolean  @default(false) @map("is_published")
-  whatsappClicks Int      @default(0) @map("whatsapp_clicks")
-  shareClicks    Int      @default(0) @map("share_clicks")
+whatsappClicks Int @default(0) @map("whatsapp_clicks")
+  shareClicks    Int @default(0) @map("share_clicks")
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

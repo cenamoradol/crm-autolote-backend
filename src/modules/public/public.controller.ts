@@ -57,6 +57,11 @@ export class PublicController {
     return this.pub.listClearanceVehiclesById(storeId);
   }
 
+  @Get('r/:code')
+  resolveShortCode(@Param('code') code: string) {
+    return this.pub.resolveShortCode(code);
+  }
+
   @Get('id/:storeId/services')
   listServicesById(
     @Param('storeId') storeId: string,

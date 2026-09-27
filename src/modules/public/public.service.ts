@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { nanoid } from 'nanoid';
+import { Prisma, Vehicle } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VehicleSearchService } from '../vehicle-search/vehicle-search.service';
+import { PUBLIC_URL_UTM } from './public.constants';
 
 // ponytail: duplicado de events.service.ts / service-categories.service.ts; mover a src/common/slugify.ts cuando aparezca un cuarto caller.
 function slugify(text: string): string {
@@ -10,6 +13,34 @@ function slugify(text: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function appendUtm(url: string): string {
+  const params = new URLSearchParams(PUBLIC_URL_UTM);
+  return `${url}?${params.toString()}`;
+}
+
+function buildVehicleUrl(origin: string, publicId: string, title: string): string {
+  return appendUtm(`${origin}/vehiculos/${publicId}/${slugify(title)}`);
+}
+
+async function ensureShortCode(
+  prisma: PrismaService,
+  vehicle: Pick<Vehicle, 'id' | 'shortCode' | 'publicId' | 'title'>,
+): Promise<string> {
+  if (vehicle.shortCode) return vehicle.shortCode;
+  const code = nanoid(6);
+  // updateMany permite condicionar shortCode = null; si count=0, otro request ganó.
+  const res = await prisma.vehicle.updateMany({
+    where: { id: vehicle.id, shortCode: null },
+    data: { shortCode: code },
+  });
+  if (res.count > 0) return code;
+  const fresh = await prisma.vehicle.findUnique({
+    where: { id: vehicle.id },
+    select: { shortCode: true },
+  });
+  return fresh?.shortCode ?? code;
 }
 
 @Injectable()
@@ -162,10 +193,17 @@ export class PublicService {
       onlyPublished: true,
     });
 
-    const resultsWithUrl = results.map((v) => ({
-      ...v,
-      url: origin ? `${origin}/vehiculos/${v.publicId}/${slugify(v.title)}` : null,
-    }));
+    const resultsWithUrl = await Promise.all(
+      results.map(async (v) => {
+        const shortCode = await ensureShortCode(this.prisma, v);
+        return {
+          ...v,
+          url: origin ? buildVehicleUrl(origin, v.publicId, v.title) : null,
+          shortCode,
+          shortUrl: origin ? `${origin}/r/${shortCode}` : null,
+        };
+      }),
+    );
 
     return {
       results: resultsWithUrl,
@@ -173,6 +211,60 @@ export class PublicService {
       limit: params.limit ?? 20,
       offset: params.offset ?? 0,
     };
+  }
+
+  async resolveShortCode(code: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { shortCode: code },
+      select: {
+        id: true,
+        publicId: true,
+        title: true,
+        storeId: true,
+        status: true,
+        isPublished: true,
+        maxPublishDate: true,
+      },
+    });
+    if (!vehicle) throw new NotFoundException('Link no encontrado.');
+
+    const now = new Date();
+    if (
+      vehicle.status !== 'AVAILABLE' ||
+      !vehicle.isPublished ||
+      (vehicle.maxPublishDate && vehicle.maxPublishDate <= now)
+    ) {
+      throw new NotFoundException('Vehículo no disponible.');
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: vehicle.storeId },
+      select: {
+        id: true,
+        urlWebsite: true,
+        domains: {
+          where: { isPrimary: true },
+          take: 1,
+          select: { domain: true },
+        },
+      },
+    });
+    if (!store) throw new NotFoundException('Store no existe.');
+
+    const origin =
+      store.urlWebsite?.replace(/\/$/, '') ||
+      (store.domains[0] ? `https://${store.domains[0].domain}` : '');
+
+    // fire-and-forget del contador para no penalizar el redirect.
+    void this.prisma.vehicle
+      .update({ where: { id: vehicle.id }, data: { shortClicks: { increment: 1 } } })
+      .catch(() => undefined);
+
+    const finalUrl = origin
+      ? buildVehicleUrl(origin, vehicle.publicId, vehicle.title ?? '')
+      : null;
+
+    return { finalUrl };
   }
 
   async listClearanceVehiclesById(storeId: string) {
