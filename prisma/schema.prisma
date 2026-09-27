@@ -77,6 +77,9 @@ model Store {
   isActive       Boolean  @default(true)
   currency       String   @default("USD")
   currencySymbol String   @default("$") @map("currency_symbol")
+
+  // Dominio del sitio público del tenant (ej. "www.tecambiotucarro.hn"). Distinto del dominio del portal CRM.
+  publicSiteDomain String? @map("public_site_domain")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

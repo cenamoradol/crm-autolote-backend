@@ -18,6 +18,7 @@ export class SuperAdminService {
     slug: string;
     logoUrl?: string;
     primaryDomain?: string;
+    publicSiteDomain?: string;
     primaryBranchName?: string;
     primaryBranchAddress?: string;
     isActive?: boolean;
@@ -36,6 +37,9 @@ export class SuperAdminService {
           name,
           slug,
           logoUrl: dto.logoUrl?.trim() || null,
+          publicSiteDomain: dto.publicSiteDomain
+            ? normalizeDomain(dto.publicSiteDomain)
+            : null,
           isActive: dto.isActive ?? true,
           branches: {
             create: {
@@ -158,6 +162,7 @@ export class SuperAdminService {
     isActive?: boolean;
     currency?: string;
     currencySymbol?: string;
+    publicSiteDomain?: string;
   }) {
     const existing = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!existing) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store no existe.' });
@@ -169,6 +174,11 @@ export class SuperAdminService {
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.currency !== undefined) data.currency = dto.currency;
     if (dto.currencySymbol !== undefined) data.currencySymbol = dto.currencySymbol;
+    if (dto.publicSiteDomain !== undefined) {
+      data.publicSiteDomain = dto.publicSiteDomain
+        ? normalizeDomain(dto.publicSiteDomain)
+        : null;
+    }
 
     if (dto.slug !== undefined) {
       const slug = dto.slug.trim().toLowerCase();

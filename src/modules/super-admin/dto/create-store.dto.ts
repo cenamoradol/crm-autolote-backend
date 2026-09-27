@@ -19,6 +19,11 @@ export class CreateStoreDto {
   @IsString()
   primaryDomain?: string;
 
+  // Dominio del sitio público del tenant (www.tudominio.com). Si se omite, los URLs públicos usan el dominio del portal.
+  @IsOptional()
+  @IsString()
+  publicSiteDomain?: string;
+
   @IsOptional()
   @IsString()
   primaryBranchName?: string;

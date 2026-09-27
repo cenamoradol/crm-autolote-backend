@@ -28,4 +28,8 @@ export class UpdateStoreDto {
   @IsString()
   @Length(1, 10)
   currencySymbol?: string;
+
+  @IsOptional()
+  @IsString()
+  publicSiteDomain?: string;
 }
