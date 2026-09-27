@@ -41,9 +41,11 @@ export class VehicleSearchService {
     storeId: string,
     params: VehicleSearchParams,
   ): Prisma.VehicleWhereInput {
+    const now = new Date();
     const where: Prisma.VehicleWhereInput = {
       storeId,
       status: 'AVAILABLE',
+      OR: [{ maxPublishDate: null }, { maxPublishDate: { gt: now } }],
     };
 
     if (params.onlyPublished !== false) {
