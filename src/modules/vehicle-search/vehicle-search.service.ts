@@ -114,8 +114,8 @@ export class VehicleSearchService {
         where,
         include: VEHICLE_FULL_INCLUDE,
         orderBy: { createdAt: 'desc' },
-        take: params.limit ?? 20,
-        skip: params.offset ?? 0,
+        ...(params.limit !== undefined ? { take: params.limit } : {}),
+        ...(params.offset !== undefined ? { skip: params.offset } : {}),
       }),
       this.prisma.vehicle.count({ where }),
     ]);

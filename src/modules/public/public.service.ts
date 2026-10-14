@@ -208,7 +208,7 @@ export class PublicService {
     return {
       results: resultsWithUrl,
       total,
-      limit: params.limit ?? 20,
+      limit: params.limit ?? null,
       offset: params.offset ?? 0,
     };
   }
