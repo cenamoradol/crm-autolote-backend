@@ -44,6 +44,18 @@ export class PublicController {
     return result;
   }
 
+  @Get('id/:storeId/vehicles/available')
+  listAvailableVehiclesById(
+    @Param('storeId') storeId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.pub.searchVehiclesByStoreId(storeId, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
+  }
+
   @Get('id/:storeId/vehicles/:publicId')
   getById(
     @Param('storeId') storeId: string,
