@@ -45,15 +45,30 @@ export class PublicController {
   }
 
   @Get('id/:storeId/vehicles/available')
-  listAvailableVehiclesById(
+  async listAvailableVehiclesById(
     @Param('storeId') storeId: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    return this.pub.searchVehiclesByStoreId(storeId, {
+    const result = await this.pub.searchVehiclesByStoreId(storeId, {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });
+    return {
+      ...result,
+      results: result.results.map((v) => ({
+        title: v.title,
+        year: v.year,
+        price: v.price,
+        transmission: v.transmission,
+        engineSize: v.engineSize,
+        brand: v.brand?.name ?? null,
+        model: v.model?.name ?? null,
+        vehicleType: v.vehicleType?.name ?? null,
+        colorRef: v.colorRef?.name ?? null,
+        shortUrl: v.shortUrl,
+      })),
+    };
   }
 
   @Get('id/:storeId/vehicles/:publicId')
