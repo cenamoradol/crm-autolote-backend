@@ -692,6 +692,13 @@ export class PublicService {
 
   // ─── Service Clicks Tracking ─────────────────────────────────────────
 
+  async trackVehicleWhatsappClick(storeId: string, publicId: string) {
+    return this.prisma.vehicle.updateMany({
+      where: { storeId, publicId },
+      data: { whatsappClicks: { increment: 1 } },
+    });
+  }
+
   async trackServiceWhatsappClick(storeId: string, serviceId: string) {
     return this.prisma.serviceListing.updateMany({
       where: { storeId, id: serviceId },

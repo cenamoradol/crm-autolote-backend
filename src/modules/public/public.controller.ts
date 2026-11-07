@@ -79,6 +79,14 @@ export class PublicController {
     return this.pub.getVehicleById(storeId, publicId);
   }
 
+  @Post('id/:storeId/vehicles/:publicId/whatsapp-click')
+  trackVehicleWhatsappClick(
+    @Param('storeId') storeId: string,
+    @Param('publicId') publicId: string,
+  ) {
+    return this.pub.trackVehicleWhatsappClick(storeId, publicId);
+  }
+
   @Get('id/:storeId/clearance')
   listClearanceById(@Param('storeId') storeId: string) {
     return this.pub.listClearanceVehiclesById(storeId);
